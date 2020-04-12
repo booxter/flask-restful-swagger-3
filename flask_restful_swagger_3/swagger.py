@@ -48,14 +48,7 @@ def create_swagger_endpoint(swagger_object):
                         swagger_doc[k] = v
 
                 if k == 'servers':
-                    if isinstance(v, list):
-                        for server in v:
-                            validate_server_object(server)
-                            continue
-                    else:
-                        raise ValidationError('Invalid servers. must a list. See {url}'.format(
-                            field=k,
-                            url='http://swagger.io/specification/#infoObject'))
+                    validate_servers_object(v)
 
                 if k == 'info':
                     validate_info_object(v)
@@ -303,7 +296,7 @@ def validate_path_item_object(path_item_object):
             validate_operation_object(v)
             continue
         if k == 'servers':
-            validate_server_object(v)
+            validate_servers_object(v)
             continue
         if k == 'parameters':
             for parameter in v:
@@ -351,8 +344,6 @@ def validate_operation_object(operation_object):
         if k in ['security']:
             validate_security_requirement_object(v)
             continue
-        if k.startswith('x-'):
-            continue
         raise ValidationError('Invalid operation object. Unknown field "{field}". See {url}'.format(
                 field=k,
                 url='http://swagger.io/specification/#pathItemObject'))
@@ -369,9 +360,9 @@ def validate_parameter_object(parameter_object):
                     field=k,
                     url='http://swagger.io/specification/#parameterObject'))
     if 'reqparser' in parameter_object:
-        if 'name' not in parameter_object:
+        if 'name' not in parameter_object['reqparser']:
             raise ValidationError('name for request parser not specified')
-        if 'parser' not in parameter_object or not isinstance(parameter_object['parser'], reqparse.RequestParser):
+        if 'parser' not in parameter_object['reqparser'] or not isinstance(parameter_object['reqparser']['parser'], reqparse.RequestParser):
             raise ValidationError('RequestParser object not specified')
         return
     if 'name' not in parameter_object:
@@ -446,6 +437,9 @@ def validate_request_body_object(request_body_object):
             validate_content_object(v)
             continue
 
+    if 'content' not in request_body_object:
+        raise ValidationError('Invalid request body object. Missing field "content"')
+
 
 def validate_content_object(content_object):
     for k, v in content_object.items():
@@ -508,11 +502,20 @@ def validate_headers_object(headers_object):
 
 
 def validate_link_object(link_object):
-    for k, v in link_object.items:
+    for k, v in link_object.items():
         if k in ['operationRef', 'operationId', 'parameters', 'requestBody', 'description']:
             continue
         if k == 'server':
-            validate_server_object(v)
+            validate_servers_object(v)
+
+
+def validate_servers_object(server_object):
+    if isinstance(server_object, list):
+        for server in server_object:
+            validate_server_object(server)
+
+    else:
+        validate_server_object(server_object)
 
 
 def validate_server_object(server_object):
@@ -562,7 +565,7 @@ def validate_email(email):
 
 
 def validate_server_variables_object(server_variables_object):
-    for k, v  in server_variables_object.items():
+    for k, v in server_variables_object.items():
         if k not in ['enum', 'default', 'description']:
             raise ValidationError('Invalid server variables object. Unknown field "{field}". See {url}'.format(
                 field=k,

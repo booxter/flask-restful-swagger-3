@@ -16,6 +16,19 @@ def test_app():
 
 
 @pytest.fixture(scope="module")
+def test_app_flask():
+    flask_app = Flask(__name__)
+    yield flask_app
+
+
+@pytest.fixture(scope="module")
+def test_api():
+    flask_app = Flask(__name__)
+    api = Api(flask_app)
+    yield api
+
+
+@pytest.fixture(scope="module")
 def test_parser():
     flask_app = Flask(__name__)
     api = Api(flask_app)

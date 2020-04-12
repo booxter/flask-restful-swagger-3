@@ -1,4 +1,17 @@
 import json
+import werkzeug
+import pytest
+from flask_restful_swagger_3 import Api, swagger, Blueprint, abort, get_swagger_blueprint
+from tests.resources import UserResource, EntityAddResource, ParseResource
+
+
+def test_get_swagger_blueprint(test_app):
+    with test_app["context"]:
+        docs = []
+        spec = test_app["api"].get_swagger_doc()
+        docs.append(spec)
+        servers = [{"url": "http://localhost:5000"}]
+        assert get_swagger_blueprint(docs, "/api/swagger", title='Example', version='1', servers=servers)
 
 
 def test_get_spec_object(test_app):
@@ -6,7 +19,32 @@ def test_get_spec_object(test_app):
         spec = test_app["api"].get_swagger_doc()
         assert "info" in spec
         assert 'paths' in spec
+        assert 'parameters' in spec['paths']['/parse']['get']
         assert spec['openapi'] == '3.0.0'
+
+
+def test_api_failed(test_app_flask):
+    api = Api(test_app_flask)
+    with pytest.raises(swagger.ValidationError):
+        api.add_resource(ParseResource, 'parse')
+
+
+def test_blueprint_failed():
+    blueprint = Blueprint('parser', __name__, url_prefix="v1")
+    api = Api(blueprint, add_api_spec_resource=False)
+    with pytest.raises(swagger.ValidationError):
+        api.add_resource(ParseResource, '/parser')
+
+    blueprint = Blueprint('parser', __name__, url_prefix="/v1/")
+    api = Api(blueprint, add_api_spec_resource=False)
+    with pytest.raises(swagger.ValidationError):
+        api.add_resource(ParseResource, '/parser')
+
+
+def test_blueprint():
+    blueprint = Blueprint('parser', __name__, url_prefix="/v1")
+    api = Api(blueprint, add_api_spec_resource=False)
+    api.add_resource(ParseResource, '/parser')
 
 
 def test_get_spec(test_app):
@@ -18,6 +56,20 @@ def test_get_spec(test_app):
     assert 'info' in data
     assert 'paths' in data
     assert data['openapi'] == '3.0.0'
+
+
+def test_abort(test_app):
+    r = test_app["app"].get('/api/not_exists')
+    if r .status_code != 200:
+        with pytest.raises(werkzeug.exceptions.BadRequest):
+            abort(400, schema={
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                }
+            })
 
 
 def test_request_parser_spec_definitions(test_parser):
