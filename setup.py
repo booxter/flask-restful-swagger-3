@@ -9,7 +9,7 @@ def read(file_to_read):
         return f.read()
 
 
-version = '0.2'
+version = '0.2.0'
 
 if branch == "develop" or branch == "master":
     version += f".dev{os.getenv('CI_BUILD_ID', None)}"
@@ -30,7 +30,7 @@ setup(
     author_email="jonathan.ullindah@gmail.com",
     license='MIT',
     long_description=read('README.rst'),
-    install_requires=['Flask-RESTful>=0.3.7'],
+    install_requires=['Flask-RESTful>=0.3.7', 'tox>=3.14.2', 'Flask-Cors>=3.0.9', 'flask-swagger-ui>=3.25.0'],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

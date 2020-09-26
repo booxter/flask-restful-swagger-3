@@ -5,12 +5,12 @@
 from flask import Flask, current_app
 from flask_cors import CORS
 from flask_restful_swagger_3 import swagger, get_swagger_blueprint
-# from swagger_ui import api_doc
+from flask_swagger_ui import get_swaggerui_blueprint
 
 from views_blueprint import get_user_resources
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={"/api/*": {"origins": "*"}})
 
 
 def auth(api_key, endpoint, method):
@@ -20,30 +20,28 @@ def auth(api_key, endpoint, method):
 
 swagger.auth = auth
 
-# A list of swagger document objects
-docs = []
-
 # Get user resources
 user_resources = get_user_resources()
-
-# Retrieve and save the swagger document object (do this for each set of resources).
-docs.append(user_resources.get_swagger_doc())
 
 # Register the blueprint for user resources
 app.register_blueprint(user_resources.blueprint)
 
 # Prepare a blueprint to server the combined list of swagger document objects and register it
-servers = [{"url": "http://localhost:5000"}]
-
-app.register_blueprint(get_swagger_blueprint(docs, "/api/swagger", title='Example', version='1', servers=servers))
+servers = [{"url": "http://localhost:5001"}]
 
 
-@app.route('/')
-def index():
-    return """<head>
-    <meta http-equiv="refresh" content="0; url=http://petstore.swagger.io/?url=http://localhost:5000/api/swagger.json" />
-    </head>"""
+SWAGGER_URL = '/api'  # URL for exposing Swagger UI (without trailing '/')
+API_URL = 'swagger.json'  # Our API url (can of course be a local resource)
+
+app.register_blueprint(get_swagger_blueprint(user_resources.open_api_json, "/api/swagger", title='Example', version='1', servers=servers))
+
+swaggerui_blueprint = get_swaggerui_blueprint(
+    SWAGGER_URL,  # Swagger UI static files will be mapped to '{SWAGGER_URL}/dist/'
+    API_URL
+)
+
+app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0')
+    app.run(debug=True, host='0.0.0.0', port='5001')

@@ -29,7 +29,7 @@ app = Flask(__name__)
 
 # Use the swagger Api class as you would use the flask restful class.
 # It supports several (optional) parameters, these are the defaults:
-api = Api(app, version='0.0', api_spec_url='/api/swagger')
+api = Api(app)
 ```
 
 The Api class supports the following parameters:
@@ -38,8 +38,8 @@ The Api class supports the following parameters:
 | --------- | ----------- |
 | `add_api_spec_resource` | Set to `True` to add an endpoint to serve the swagger specification (defaults to `True`). |
 | `version` | The API version string (defaults to '0.0'). Maps to the `version` field of the [info object](http://swagger.io/specification/#infoObject). |
-| `api_spec_base` | Instead of specifying individual swagger fields, you can pass in a minimal [OpenAPI Object](http://swagger.io/specification/#openapiObject) to use as a template. Note that parameters specified explicity will overwrite the values in this template. |
-| `api_spec_url` | The URL path that serves the swagger specification document (defaults to `/api/swagger`). The path is appended with `.json` and `.html` (i.e. `/api/swagger.json` and `/api/swagger.html`). |
+| `swagger_prefix_url` | The URL prefix for swagger (defaults to `/api/doc)` |
+| `swagger_url`| The URL path that serves the swagger specification document (defaults to `swagger.json`). |
 | `servers` | The server on which the API is served, it replaces `schemes`, `host` and `base_path` [server object](http://swagger.io/specification/#serverObject). |
 | `schemas`| The Schema Object allows the definition of input and output data types. Maps to the [`schema`](http://swagger.io/specification/#schemaObject) |
 | `content` | A list of MIME types the API can consume. Maps to the [`contents`](http://swagger.io/specification/#contentObject) field of the [components](http://swagger.io/specification/#componentObject). |
@@ -57,43 +57,32 @@ The Api class supports the following parameters:
 
 ## Documenting API endpoints
 
-Decorate your API endpoints with `@swagger.doc`. It takes a dictionary in the format of an [operation object](http://swagger.io/specification/#operationObject).
+You can decorate your Api endpoiints with several decorators to build to swagger object:
+
+#### List of decorators
+
+_You need to import `swagger` from `flask_restful_swagger_3`_
+
+
+* `swagger.tags`: Allow to group operations with a list of tags (argument accepted: a list os strings)
+* `swagger.reorder_with`: Apply a schema and a response to a method, default response code is `200` (argument accepted: `schema`: the schema to apply, `as_list`: Apply the schema as list (default is `False`), `response_code`: The response code to apply the example schema (default is `200`), `description`: Description of the method (default is the function doc))
+* `swagger.reorder_list_with`: Same as `swagger.reorder_with` with `as_list` at `True`
+* `swagger.response`: Add a response to the method (argument accepted: `response_code`:  The response to add to the method, `description`: The description of the response, `schema`: The schema to apply to the method)
+* `swagger.parameter`: Add a parameter to the method (Don't use the `path`parameter, it will be added automatically with a url with variable: `/users:<int:user_id>`) (argument accepted: _in, name, schema, description or a `dictionnary)
+* `swagger.parameters`: Add several parameters to the method, it can add the args to the `_parser` of the method if exist  (argument accepted: a list of parameter)
+* `swagger.expected`: Add a request body to the method (argument accepted: `schema`: The schema expected, `required`)
+* `swagger.reqparser`: Add  request body to the method using RequestParser (argument accepted: `name`: Name use to generate the model, `parser`: The RequestParser() object)
 
 ```python
+from flask_restful_swagger_3 import swagger, Resource
+
+
 class UserItemResource(Resource):
-    @swagger.doc({
-        'tags': ['user'],
-        'description': 'Returns a user',
-        'parameters': [
-            {
-                'name': 'user_id',
-                'description': 'User identifier',
-                'in': 'path',
-                'schema': {
-                    'type': 'integer'
-                }
-            }
-        ],
-        'responses': {
-            '200': {
-                'description': 'User',
-                'content': {
-                    'application/json': {
-                        'schema': UserModel,
-                        'examples': {
-                            'application/json': {
-                                'id': 1,
-                                'name': 'somebody'
-                            }
-                        }
-                    }
-                }
-            }
-        }
-     })
+    @swagger.tags(['user'])
+    @swagger.reorder_with(UserModel, description="Returns a user")
     def get(self, user_id):
         # Do some processing
-        return UserModel(id=1, name='somebody'}), 200  # generates json response {"id": 1, "name": "somebody"}
+        return UserModel(**{id=1, name='somebody'}), 200  # generates json response {"id": 1, "name": "somebody"}
 
 ```
 
@@ -113,7 +102,7 @@ documentation will be automatically added to a reqparse parser and assigned to t
 Create a model by inheriting from `flask_restful_swagger_3.Schema`
 
 ```python
-from flask_restful_swagger_2 import Schema
+from flask_restful_swagger_3 import Schema
 
 
 class EmailModel(Schema):
@@ -157,33 +146,17 @@ You can specify RequestParser object if you want to pass its arguments to spec. 
 ```python
 from flask_restful.reqparse import RequestParser
 
-from flask_restful_swagger_2 import swagger, Resource
+from flask_restful_swagger_3 import swagger, Resource
 
 
 class GroupResource(Resource):
     post_parser = RequestParser()
     post_parser.add_argument('name', type=str, required=True)
     post_parser.add_argument('id', type=int, help='Id of new group')
-    @swagger.doc({
-        'tags': ['groups'],
-        'description': 'Adds a group',
-        'reqparser': {'name': 'group parser',
-                      'parser': post_parser},
-        'responses': {
-            '201': {
-                'description': 'Created group',
-                'content': {
-                    'application/json': {
-                        'examples': {
-                            'application/json': {
-                                'id': 1
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    })
+
+    @swagger.tags(['groups'])
+    @swagger.response(response_code=201, description='created group')
+    @swagger.reqparser(name='GroupsModel', parser=post_parser)
     def post(self):
     ...
 ```
@@ -235,9 +208,8 @@ def auth(api_key, endpoint, method):
 swagger.auth = auth
 
 class MyView(Resource):
-    @swagger.doc({
-    # documentation...
-    })
+    @swagger.tags(...)
+    # documentation..
     def get(self):
         return SomeModel(value=5)
 
@@ -246,7 +218,7 @@ api.add_resource(MyView, '/some/endpoint')
 
 ## Specification document
 
-The `get_swagger_doc` method of the Api instance returns the specification document object,
+The `open_api_json` method of the Api instance returns the specification document object,
 which may be useful for integration with other tools for generating formatted output or client code.
 
 ## Using Flask Blueprints
@@ -299,14 +271,10 @@ docs = []
 # Get user resources
 user_resources = get_user_resources()
 
-# Retrieve and save the swagger document object (do this for each set of resources).
-docs.append(user_resources.get_swagger_doc())
+SWAGGER_URL = '/api'  # URL for exposing Swagger UI (without trailing '/')
+API_URL = 'swagger.json'  # Our API url (can of course be a local resource)
 
-# Register the blueprint for user resources
-app.register_blueprint(user_resources.blueprint)
-
-# Prepare a blueprint to serve the combined list of swagger document objects and register it
-app.register_blueprint(get_swagger_blueprint(docs, '/api/doc/swagger', title='Example', api_version='1'))
+app.register_blueprint(get_swagger_blueprint(user_resources.open_api_json, "/api/swagger", title='Example', version='1', servers=servers))
 ```
 
 Refer to the files in the `example` folder for the complete code.
@@ -317,7 +285,6 @@ To run the example project in the `example` folder:
 
 ```shell script
 pip install flask-restful-swagger-3
-pip install flask-cors    # needed to access spec from swagger-ui
 python app.py
 ```
 
@@ -328,7 +295,7 @@ python app_blueprint.py
 ```
 
 The swagger spec will by default be at `http://localhost:5000/api/doc/swagger.json`. You can change the URL by passing
-`api_spec_url='/my/path'` to the `Api` constructor. You can use [swagger-ui](https://github.com/swagger-api/swagger-ui)
+`SWAGGER_URL='/my/path'` and `API_URL='myurl' to the `Api` constructor. You can use [swagger-ui](https://github.com/swagger-api/swagger-ui)
 to explore your api. Try it online at [http://petstore.swagger.io/](http://petstore.swagger.io/?url=http://localhost:5000/api/swagger.json)
 
 To run tests:
