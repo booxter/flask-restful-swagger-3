@@ -1,6 +1,16 @@
+Version 0.2.0
+-------------
+
+Released 2020-09-26
+
+-   Update usages
+-   Update test
+-   Reinforce test.
+-   Fix validate object
+
 Version 0.1
 -----------
 
-Released 2010-04-16
+Released 2019-12-11
 
 -   First release.

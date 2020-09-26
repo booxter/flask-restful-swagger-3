@@ -10,47 +10,15 @@ known_users = []
 
 
 class UserResource(Resource):
-    @swagger.doc({
-        'tags': ['users'],
-        'description': 'Adds a user',
-        'parameters': [
-            {
-                'name': 'body',
-                'description': 'Request body',
-                'in': 'query',
-                'schema': UserModel,
-                'required': True,
-            }
-        ],
-        'responses': {
-            '201': {
-                'description': 'Created user',
-                'content': {
-                    'application/json': {
-                        'schema': UserModel,
-                        'description': 'Location of the new item',
-                        'headers': {
-                            'schema': {
-                                'type': 'string'
-                            }
-                        },
-                        'examples': {
-                            'application/json': {
-                                'id': 1
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    })
-    def post(self):
-        """
-        Adds a user.
-        """
+    @swagger.tags('User')
+    @swagger.reorder_with(UserModel, response_code=200)
+    @swagger.parameters([{'in':'query', 'name':'body', 'description':'Request body', 'schema':UserModel, 'required': 'true'}])
+    def post(self, _parser):
+        """Adds a user."""
         # Validate request body with schema model
+        print("Ma valeur retournée", _parser.parse_args()['name'])
         try:
-            data = UserModel(**request.get_json())
+            data = UserModel(**_parser.parse_args())
 
         except ValueError as e:
             return ErrorModel(**{'message': e.args[0]}), 400
@@ -60,43 +28,12 @@ class UserResource(Resource):
 
         return data, 201, {'Location': request.path + '/' + str(data['id'])}
 
-    @swagger.doc({
-        'tags': ['users'],
-        'description': 'Returns all users',
-        'parameters': [
-            {
-                'name': 'name',
-                'description': 'Name to filter by',
-                'schema': {
-                    'type': 'string',
-                },
-                'in': 'query'
-            }
-        ],
-        'responses': {
-            '200': {
-                'description': 'List of users',
-                'content': {
-                    'application/json': {
-                        'schema': UserModel,
-                        'examples': {
-                            'application/json': [
-                                {
-                                    'id': 1,
-                                    'name': 'somebody'
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        }
-    })
+    @swagger.tags('User')
+    @swagger.reorder_with(UserModel, response_code=200)
+    @swagger.parameters(
+        [{'in': 'query', 'name': 'body', 'description': 'Request body', 'schema': {'type': 'string'}, 'required': 'true'}])
     def get(self, _parser):
-        """
-        Returns all users.
-        :param _parser: Query parameter parser
-        """
+        """Returns all users."""
         # swagger.doc decorator returns a query parameter parser in the special
         # '_parser' function argument if it is present
         args = _parser.parse_args()
@@ -109,41 +46,11 @@ class UserResource(Resource):
 
 
 class UserItemResource(Resource):
-    @swagger.doc({
-        'tags': ['user'],
-        'description': 'Returns a user',
-        'parameters': [
-            {
-                'name': 'user_id',
-                'description': 'User identifier',
-                'in': 'path',
-                'schema': {
-                    'type': 'integer'
-                }
-            }
-        ],
-        'responses': {
-            '200': {
-                'description': 'User',
-                'content': {
-                    'application/json': {
-                        'schema': UserModel,
-                        'examples': {
-                            'application/json': {
-                                'id': 1,
-                                'name': 'somebody'
-                            }
-                        }
-                    }
-                }
-            }
-        }
-     })
+    @swagger.tags('usersItem')
+    @swagger.reorder_with(UserModel, response_code=200)
+    @swagger.response(response_code=404)
     def get(self, user_id):
-        """
-        Returns a specific user.
-        :param user_id: The user identifier
-        """
+        """Returns a specific user."""
         user = next((u for u in known_users if u['id'] == user_id), None)
 
         if user is None:
@@ -155,31 +62,14 @@ class UserItemResource(Resource):
 
 class GroupResource(Resource):
     post_parser = RequestParser()
-    post_parser.add_argument('name', type=str, required=True)
+    post_parser.add_argument('name', type=str, required="true")
     post_parser.add_argument('id', type=int, help='Id of new group')
     post_parser.add_argument('type', type=str, choices=['first', 'second', 'third'])
     added_groups = []
 
-    @swagger.doc({
-        'tags': ['groups'],
-        'description': 'Adds a group',
-        'reqparser': {'name': 'GroupsModel',
-                      'parser': post_parser},
-        'responses': {
-            '201': {
-                'description': 'Created group',
-                'content': {
-                    'application/json': {
-                        'examples': {
-                            'application/json': {
-                                'id': 1
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    })
+    @swagger.tags('groups')
+    @swagger.response(response_code=201, description='created group')
+    @swagger.reqparser(name='GroupsModel', parser=post_parser)
     def post(self):
         """
         Creates group

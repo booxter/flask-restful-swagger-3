@@ -1,67 +1,144 @@
 import json
+import pytest
+from flask import Blueprint
+from tests.base_test import BaseTest, BaseTestapi
+from tests.fixtures.fixture_resources import BadFormatResourceReqbodyReqparser, BadFormatUrl, UserResource
+from flask_restful_swagger_3 import swagger, get_swagger_blueprint, Api
 
 
-def test_get_spec_object(test_app):
-    with test_app["context"]:
-        spec = test_app["api"].get_swagger_doc()
+class TestApi(BaseTestapi):
+
+    def test_get_spec_object(self):
+        # Retrieve spec object
+        spec = self.api.open_api_json
         assert "info" in spec
+        assert "title" in spec["info"]
+        assert spec["info"]["title"] == "Example"
         assert 'paths' in spec
-        assert spec['openapi'] == '3.0.0'
+        assert 'parameters' in spec['paths']['/parse']['get']
+        assert spec['openapi'] == '3.0.2'
+
+    def test_get_spec(self):
+        # Retrieve spec
+        r = self.client_app.get('api/doc/swagger.json')
+        assert r.status_code == 200
+
+        data = json.loads(r.data.decode())
+        assert 'info' in data
+        assert 'paths' in data
+        assert data['openapi'] == '3.0.2'
+
+    def test_parse_query_parameters(self):
+        r = self.client_app.get('/parse?str=Test' +
+                             '&date=2016-01-01' +
+                             '&datetime=2016-01-01T12:00:00%2B00:00' +
+                             '&bool=False' +
+                             '&int=123' +
+                             '&float=1.23')
+
+        assert r.status_code == 200
+
+        data = json.loads(r.data.decode())
+        assert data['str'] == 'Test'
+        assert data['date'] == '2016-01-01T00:00:00'
+        assert data['datetime'] == '2016-01-01T12:00:00+00:00'
+        assert not data['bool']
+        assert data['int'] == 123
+        assert data['float'] == 1.23
+
+    def test_get_user(self):
+        # Retrieve user
+        r = self.client_app.get('/users/1?name=test')
+        assert r.status_code == 200
+
+        data = json.loads(r.data.decode())
+        assert data['id'] == 1
+        assert data['name'] == 'test'
+
+    def test_resource_reqbody_reqparser_should_not_validate(self):
+        with pytest.raises(swagger.ValidationError):
+            self.api.add_resource(BadFormatResourceReqbodyReqparser, '/bad_resource')
+
+    def test_bad_url_format(self):
+        with pytest.raises(ValueError):
+            self.api.add_resource(BadFormatUrl, 'bad_url')
+
+        with pytest.raises(ValueError):
+            self.api.add_resource(BadFormatUrl, 'bad_url/')
+
+    def test_get_swagger_blueprint(self):
+        assert get_swagger_blueprint(self.api.open_api_json)
+
+    def test_other(self):
+        r = self.client_app.post('/api/users?id=0&name=string&mail=john.doe@butcher.com&keys=john&keys=max')
+        data = json.loads(r.data.decode())
+        expected = {'id': 0, 'name': 'string', 'mail': 'john.doe@butcher.com', 'keys': ['john', 'max']}
+        assert r.status_code == 201
+        assert data == expected
 
 
-def test_get_spec(test_app):
-    # Retrieve spec
-    r = test_app["app"].get('/api/swagger.json')
-    assert r.status_code == 200
+class TestFlaskSwaggerRequestParser(BaseTestapi):
 
-    data = json.loads(r.data.decode('utf-8'))
-    assert 'info' in data
-    assert 'paths' in data
-    assert data['openapi'] == '3.0.0'
+    def test_request_parser_spec_definitions(self):
+        # Retrieve spec
+        r = self.client_app.get('/api/doc/swagger.json')
+        assert r.status_code == 200
+
+        data = json.loads(r.data.decode())
+        assert 'components' in data
+        assert 'schemas' in data['components']
+        assert 'EntityAddParser' in data['components']['schemas']
+        assert data['components']['schemas']['EntityAddParser']['type'] == 'object'
+
+        properties = data['components']['schemas']['EntityAddParser']['properties']
+        required = data['components']['schemas']['EntityAddParser']['required']
+
+        id_prop = properties.get('id')
+        assert id_prop
+        assert 'default' not in id_prop
+        assert 'id' not in required
+        assert id_prop['type'] == 'integer'
+        assert id_prop['description'] == 'id help'
+
+        name_prop = properties.get('name')
+        assert name_prop
+        assert 'default' not in name_prop
+        assert 'name' not in required
+        assert name_prop['type'] == 'string'
+        assert 'description' not in name_prop
+
+        priv_prop = properties.get('private')
+        assert priv_prop
+        assert 'default' not in priv_prop
+        assert 'private' in required
+        assert priv_prop['type'] == 'boolean'
+        assert 'description' not in priv_prop
+
+        val_prop = properties.get('value')
+        assert val_prop
+        assert val_prop['default'] == 1.1
+        assert 'value' not in required
+        assert val_prop['type'] == 'float'
+        assert 'description' not in val_prop
+
+        assert properties.get('password_arg')
+        assert properties['password_arg']['type'] == 'password'
 
 
-def test_request_parser_spec_definitions(test_parser):
-    # Retrieve spec
-    r = test_parser["app"].get('/api/swagger.json')
-    assert r.status_code == 200
+class TestBlueprint(BaseTest):
+    def test_get_spec_object(self):
+        # Retrieve spec object
+        blueprint = Blueprint('user', __name__)
+        api = Api(blueprint, '/test', add_api_spec_resource=False)
+        api.add_resource(UserResource, '/users')
 
-    data = json.loads(r.data.decode('utf-8'))
-    assert 'responses' in data['paths']["/entities/"]["post"]
-    assert 'EntityAddParser' in data['components']['schemas']
-    assert data['components']['schemas']['EntityAddParser']['type'] == 'object'
+        self.app.register_blueprint(blueprint)
 
-    properties = data['components']['schemas']['EntityAddParser']['properties']
-    id_prop = properties.get('id')
-    assert id_prop is not None
-    assert 'default' not in id_prop
-    assert not id_prop['required']
-    assert id_prop['type'] == 'integer'
-    assert id_prop['name'] == 'id'
-    assert id_prop['description'] == 'id help'
+        spec = api.open_api_json
 
-    name_prop = properties.get('name')
-    assert name_prop is not None
-    assert 'default' not in name_prop
-    assert not name_prop['required']
-    assert name_prop['type'] == 'string'
-    assert name_prop['name'] == 'name'
-    assert name_prop['description'] is None
-
-    priv_prop = properties.get('private')
-    assert priv_prop is not None
-    assert 'default' not in priv_prop
-    assert priv_prop['required']
-    assert priv_prop['type'] == 'boolean'
-    assert priv_prop['name'] == 'private'
-    assert priv_prop['description'] is None
-
-    val_prop = properties.get('value')
-    assert val_prop is not None
-    assert val_prop['default'] == 1.1
-    assert not val_prop['required']
-    assert val_prop['type'] == 'number'
-    assert val_prop['name'] == 'value'
-    assert val_prop['description'] is None
-
-    assert properties.get('password_arg') is not None
-    assert properties['password_arg']['type'] == 'password'
+        assert "info" in spec
+        assert "title" in spec["info"]
+        assert spec["info"]["title"] == "Example"
+        assert 'paths' in spec
+        assert 'parameters' in spec['paths']['/users']['get']
+        assert spec['openapi'] == '3.0.2'

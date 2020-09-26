@@ -1,16 +1,15 @@
 import pytest
-from tests.models import SchemaTestModel
+from tests.fixtures.fixture_models import SchemaTestModel
 
 
-def test_should_validate_schema_valid():
-    assert SchemaTestModel(**{'id': 1, 'name': 'somebody'}) == {'id': 1, 'name': 'somebody'}
+class TestSchema:
+    def test_should_validate_schema_valid(self):
+        assert SchemaTestModel(**{'id': 1, 'name': 'somebody'}) == {'id': 1, 'name': 'somebody'}
 
+    def test_should_validate_schema_missing_required(self):
+        with pytest.raises(ValueError):
+            SchemaTestModel(**{'name': 'somebody'})
 
-def test_should_validate_schema_missing_required():
-    with pytest.raises(ValueError):
-        assert SchemaTestModel(**{'name': 'somebody'})
-
-
-def test_should_validate_schema_invalid_type():
-    with pytest.raises(ValueError):
-        assert SchemaTestModel(**{'id': '1'})
+    def test_should_validate_schema_invalid_type(self):
+        with pytest.raises(ValueError):
+            SchemaTestModel(**{'id': '1'})
