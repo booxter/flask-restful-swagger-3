@@ -30,7 +30,7 @@ setup(
     author_email="jonathan.ullindah@gmail.com",
     license='MIT',
     long_description=read('README.rst'),
-    install_requires=['Flask-RESTful>=0.3.7', 'tox', 'Flask-Cors', 'flask-swagger-ui'],
+    install_requires=['Flask-RESTful>=0.3.7', 'Flask-Cors', 'flask-swagger-ui'],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
