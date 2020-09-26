@@ -1,4 +1,6 @@
 from flask import Blueprint, request
+from flask_restful.reqparse import RequestParser
+
 from flask_restful_swagger_3 import Api, swagger, Resource
 
 from models import UserModel, ErrorModel
@@ -8,47 +10,16 @@ known_users = []
 
 
 class UserResource(Resource):
-    @swagger.doc({
-        'tags': ['users'],
-        'description': 'Adds a user',
-        'parameters': [
-            {
-                'name': 'body',
-                'description': 'Request body',
-                'in': 'query',
-                'schema': UserModel,
-                'required': True,
-            }
-        ],
-        'responses': {
-            '201': {
-                'description': 'Created user',
-                'headers': {
-                    'description': 'Location of the new item',
-                    'schema': {
-                        'type': 'string',
-                    }
-                },
-                'content': {
-                    'application/json': {
-                        'schema': UserModel,
-                        'examples': {
-                            'application/json': {
-                                'id': 1
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    })
-    def post(self):
+    @swagger.tags('users')
+    @swagger.reorder_with(UserModel, response_code=200)
+    @swagger.parameter(_in='query', name='query', schema=UserModel, required=True, description='query')
+    def post(self, _parser):
         """
-        Adds a user.
+        Adds a user
         """
         # Validate request body with schema model
         try:
-            data = UserModel(**request.get_json())
+            data = UserModel(**_parser.parse_args())
 
         except ValueError as e:
             return ErrorModel(**{'message': e.args[0]}), 400
@@ -58,76 +29,22 @@ class UserResource(Resource):
 
         return data, 201, {'Location': request.path + '/' + str(data['id'])}
 
-    @swagger.doc({
-        'tags': ['users'],
-        'description': 'Returns all users',
-        'responses': {
-            '200': {
-                'description': 'List of users',
-                'content': {
-                    'application/json': {
-                        'schema': UserModel,
-                        'examples': {
-                            'application/json': [
-                                {
-                                    'id': 1,
-                                    'name': 'somebody'
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        }
-    })
+    @swagger.tags('users')
+    @swagger.response(response_code=200)
     def get(self):
         """
         Returns all users.
-        :param _parser: Query parameter parser
         """
-        # swagger.doc decorator returns a query parameter parser in the special
-        # '_parser' function argument if it is present
-        # args = _parser.parse_args()
-
-        # users = ([u for u in known_users if u['name'] == args['name']]
-        #          if 'name' in args else known_users)
+        users = ([u for u in known_users if u['name']])
 
         # Return data through schema model
-        # return map(lambda user: UserModel(**user), users), 200
-        return "success"
+        return list(map(lambda user: UserModel(**user), users)), 200
+        # return "success"
 
 
 class UserItemResource(Resource):
-    @swagger.doc({
-        'tags': ['user'],
-        'description': 'Returns a user',
-        'parameters': [
-            {
-                'name': 'user_id',
-                'description': 'User identifier',
-                'in': 'path',
-                'schema': {
-                    'type': 'integer'
-                }
-            }
-        ],
-        'responses': {
-            '200': {
-                'description': 'User',
-                'content': {
-                    'application/json': {
-                        'schema': UserModel,
-                        'examples': {
-                            'application/json': {
-                                'id': 1,
-                                'name': 'somebody'
-                            }
-                        }
-                    }
-                }
-            }
-        }
-     })
+    @swagger.tags('user')
+    @swagger.response(response_code=200)
     def get(self, user_id):
         """
         Returns a specific user.

@@ -1,11 +1,13 @@
 import collections
 import re
 import inspect
-import copy
 from functools import wraps
 
 from flask import request
 from flask_restful import Resource, reqparse, inputs
+
+
+REGISTRY_SCHEMA = {}
 
 
 class ValidationError(ValueError):
@@ -24,7 +26,7 @@ def _auth(*args, **kwargs):
     return auth(*args, **kwargs)
 
 
-def create_swagger_endpoint(swagger_object):
+def create_open_api_resource(swagger_object):
     """Creates a flask_restful api endpoint for the swagger spec"""
 
     class SwaggerEndpoint(Resource):
@@ -59,6 +61,21 @@ def create_swagger_endpoint(swagger_object):
     return SwaggerEndpoint
 
 
+class TypeSwagger:
+    bool = "boolean"
+    str = "string"
+    float = "number"
+    int = "integer"
+    bin = "binary"
+    list = "array"
+    dict = "object"
+
+    @classmethod
+    def get_type(cls, _type):
+        if _type in cls.__dict__:
+            return cls.__dict__[_type]
+
+
 def set_nested(d, key_spec, value):
     """
     Sets a value in a nested dictionary.
@@ -90,18 +107,7 @@ def add_parameters(swagger_object, parameters):
         ('version', '', 'info.version'),
         ('contact', {}, 'info.contact'),
         ('license', {}, 'info.license'),
-        # ('host', '', 'host'),
-        # ('base_path', '', 'basePath'),
-        # ('schemes', [], 'schemes'),
         ('servers', [], 'servers'),
-        # ('consumes', [], 'consumes'),
-        # ('produces', [], 'produces'),
-        # ('parameters', {}, 'parameters'),
-        # ('responses', {}, 'responses'),
-        # ('security_definitions', {}, 'securityDefinitions'),
-        # ('security', [], 'security'),
-        # ('tags', [], 'tags'),
-        # ('external_docs', {}, 'externalDocs'),
         ('components', {}, 'components'),
         ('paths', {}, 'paths'),
         ('security', [], 'security'),
@@ -121,17 +127,32 @@ def get_data_type(param):
     :param param: swagger parameter
     :return: Python type
     """
-    if 'schema' not in param:
+    if not param:
         return None
-    param = param['schema']
-    param_type = param.get('type', None)
+    try:
+        param_type = param.get('type', None)
+    except TypeError:
+        param_type = param.__dict__.get('type', None)
     if param_type:
         if param_type == 'array':
             if 'items' in param:
                 param = param['items']
-            param_type = param.get('type', None)
+            try:
+                param_type = param.get('type', None)
+            except TypeError:
+                param_type = param.__dict__.get('type', None)
+            if param_type == 'object':
+                prop = param.__dict__.get('properties', None)
+                for k in prop:
+                    try:
+                        param_type = prop[k].get('type', None)
+                    except TypeError:
+                        param_type = prop[k].__dict__.get('type', None)
         if param_type == 'string':
-            param_format = param.get('format', None)
+            try:
+                param_format = param.get('format', None)
+            except TypeError:
+                param_format = param.__dict__.get('format', None)
 
             if param_format == 'date':
                 return inputs.date
@@ -157,8 +178,11 @@ def get_data_type(param):
 
 
 def get_data_action(param):
-    if 'schema' in param:
-        param_type = param['schema'].get('type', None)
+    if param:
+        try:
+            param_type = param.get('type', None)
+        except TypeError:
+            param_type = param.__dict__.get('type', None)
 
         if param_type == 'array':
             return 'append'
@@ -167,23 +191,66 @@ def get_data_action(param):
     return None
 
 
+def get_parser_from_schema(ref):
+    if type(ref) == str:
+        _schema = ref.split('/')[-1]
+    else:
+        _schema = ref
+    if _schema in REGISTRY_SCHEMA:
+        definitions_schema = REGISTRY_SCHEMA[_schema]
+    else:
+        definitions_schema = _schema
+    _type = definitions_schema.__dict__.get('type', None)
+    properties = definitions_schema.__dict__.get('properties', None)
+    required = definitions_schema.__dict__.get('required', [])
+
+    if _type == 'object':
+        for prop in properties:
+            try:
+                _help = properties[prop].get('description', None)
+            except TypeError:
+                _help = properties[prop].__dict__.get('description', None)
+
+            try:
+                default = properties[prop].get('default', None)
+            except TypeError:
+                default = properties[prop].__dict__.get('default', None)
+            name = prop
+            second_part = {
+                'dest': prop,
+                'type': get_data_type(properties[prop]),
+                'location': 'args',
+                'help': _help,
+                'required': prop in required,
+                'default': default,
+                'action': get_data_action(properties[prop])
+            }
+            yield name, second_part
+
+
 def get_parser_arg(param):
     """
     Return an argument for the request parser.
     :param param: Swagger document parameter
     :return: Request parser argument
     """
-    return (
+    if 'schema' in param:
+        if '$ref' in param['schema']:
+            list_obj = [(name, sec) for name, sec in get_parser_from_schema(param['schema']['$ref'])]
+            return list_obj
+
+    obj = (
         param['name'],
         {
             'dest': param['name'],
-            'type': get_data_type(param),
+            'type': get_data_type(param.get('schema', None)),
             'location': 'args',
             'help': param.get('description', None),
             'required': param.get('required', False),
             'default': param.get('default', None),
-            'action': get_data_action(param)
+            'action': get_data_action(param['schema'])
         })
+    return obj
 
 
 def get_parser_args(params):
@@ -204,35 +271,13 @@ def get_parser(params):
     parser = reqparse.RequestParser()
 
     for arg in get_parser_args(params):
-        parser.add_argument(arg[0], **arg[1])
+        if type(arg) == list:
+            for a in arg:
+                parser.add_argument(a[0], **a[1])
+        else:
+            parser.add_argument(arg[0], **arg[1])
 
     return parser
-
-
-def doc(operation_object):
-    """Decorator to save the documentation of an api endpoint.
-
-    Saves the passed arguments as an attribute to use them later when generating the swagger spec.
-    """
-    def decorated(f):
-        f.__swagger_operation_object = copy.deepcopy(operation_object)
-
-        @wraps(f)
-        def inner(self, *args, **kwargs):
-            # Get names of resource function arguments
-
-            func_args = inspect.getfullargspec(f).args
-            # You can also use
-            # func_args = list(inspect.signature(f).parameters.keys())
-
-            # Add a parser for query arguments if the special argument '_parser' is present
-            if 'parameters' in f.__swagger_operation_object and '_parser' in func_args:
-                kwargs.update({'_parser': get_parser(f.__swagger_operation_object['parameters'])})
-
-            return f(self, *args, **kwargs)
-
-        return inner
-    return decorated
 
 
 def validate_info_object(info_object):
@@ -602,7 +647,7 @@ def extract_swagger_path(path):
     And this /<string(length=2):lang_code>/<string:id>/<float:probability>
     to this: /{lang_code}/{id}/{probability}
     """
-    return re.sub('<(?:[^:]+:)?([^>]+)>', '{\\1}', path)
+    return re.sub("<(?:[^:]+:)?([^>]+)>", "{\\1}", path), re.findall("<(.*?)>", path)
 
 
 def sanitize_doc(comment):
@@ -617,45 +662,255 @@ def sanitize_doc(comment):
         return comment.replace('\n', '<br/>') if comment else comment
 
 
-def parse_method_doc(method, operation):
+def expected(schema, required=False):
     """
-    Parse documentation from a resource method.
-    :param method: The resource method
-    :param operation: The operation document
-    :return: The operation summary
+    decorator to add request body in method
+    :param schema:
+    :param required:
+    :return:
     """
-    summary = None
 
-    full_doc = inspect.getdoc(method)
-    if full_doc:
-        lines = full_doc.split('\n')
-        if lines:
-            # Append the first line of the docstring to any summary specified
-            # in the operation document
-            summary = sanitize_doc([operation.get('summary', None), lines[0]])
+    def decorated(func):
+        func.__request_body = {"schema": schema, "required": required}
 
-    return summary
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            return func(self, *args, **kwargs)
+
+        return wrapper
+
+    return decorated
 
 
-def parse_schema_doc(cls, definition):
+def parameters(params=[]):
     """
-    Parse documentation from a schema class.
-    :param cls: The schema class
-    :param definition: The schema definition
-    :return: The schema description
+    decorator to add multiple parameters to url
+
+    Example usage:
+        @parameters([
+            {
+                'in': 'query',
+                'name': 'test',
+                'schema': {type: integer},
+                'description': 'a description'
+            }])
+        def get():
+            ...
+
+
+        @parameters(_in='query', name='test')
+        def get():
+            ...
+
+    :param params:
+    :return:
     """
-    description = None
+    if not type(params) == list:
+        raise ValidationError("decorator 'parameters' accept only list argument")
 
-    # Skip processing the docstring of the schema class if the schema
-    # definition already contains a description
-    if 'description' not in definition:
-        full_doc = inspect.getdoc(cls)
+    for param in params:
+        if param and param['in'] == 'path':
+            raise ValidationError("""
+            parameter with path must be set automlatically when added variable in url path
+            example: api.add_resource(/user/<int:user_id>)
+            """)
 
-        # Avoid returning the docstring of the base dict class
-        if full_doc and full_doc != inspect.getdoc(dict):
-            lines = full_doc.split('\n')
-            if lines:
-                # Use the first line of the class docstring as the description
-                description = sanitize_doc(lines[0])
+    def decorated(func):
+        func_args = inspect.getfullargspec(func).args
+        if "__params" in func.__dict__:
+            for param in params:
+                func.__params.append({k: v for k, v in dict(param).items()})
 
-    return description
+        else:
+            func.__params = params
+
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            if '_parser' in func_args:
+                kwargs.update({'_parser': get_parser(params)})
+            return func(self, *args, **kwargs)
+
+        return wrapper
+
+    return decorated
+
+
+def parameter(param={}, **kwargs):
+    """
+    decorator to add one parameter to url
+
+    Example usage:
+        @parameter(_in='query', name='test', schema={type: integer}, description='a description')
+        def get():
+            ...
+
+        @parameter({
+                'in': 'query',
+                'name': 'test',
+                'schema': {type: integer},
+                'description': 'a description'
+            })
+        def get():
+            ...
+    :param param
+    :param kwargs:
+    :return:
+    """
+    params = []
+    if "_in" in kwargs:
+        kwargs["in"] = kwargs.pop("_in")
+
+    if not type(param) == dict:
+        raise ValueError(f"'param' {param} must be of type 'dict'")
+
+    if kwargs:
+        params.append(dict(kwargs))
+
+    if param:
+        params.append(param)
+
+    return parameters(params)
+
+
+def response(response_code, description=None, schema=None):
+    """
+    Decorator to add a response to the url
+    :param response_code:
+    :param description:
+    :param schema:
+    :return:
+    """
+    def decorated(func):
+        if "__response_code" in func.__dict__:
+            func.__response_code.append(response_code)
+        else:
+            func.__response_code = [response_code]
+
+        _description = description
+        if not _description:
+            _description = sanitize_doc(func.__doc__.split('\n'))
+        if "__description" in func.__dict__:
+            func.__description.append(sanitize_doc(_description.split('\n')))
+        else:
+            func.__description = [sanitize_doc(_description.split('\n'))]
+
+        if "__schema" in func.__dict__:
+            func.__schema.append(schema)
+        else:
+            func.__schema = [schema]
+
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            return func(self, *args, **kwargs)
+
+        return wrapper
+
+    return decorated
+
+
+def reorder_with(schema, as_list: bool = False, response_code=200, description=None):
+    """
+    Decorator to apply a schema to a response
+    :param schema:
+    :param as_list:
+    :param response_code:
+    :param description:
+    :return:
+    """
+    def decorated(func):
+        _schema = [schema] if as_list else schema
+        if "__schema" in func.__dict__:
+            func.__schema.append(_schema)
+        else:
+            func.__schema = [_schema]
+
+        if "__response_code" in func.__dict__:
+            func.__response_code.append(response_code)
+        else:
+            func.__response_code = [response_code]
+
+        _description = description
+        if not _description:
+            _description = sanitize_doc(func.__doc__.split('\n'))
+        if "__description" in func.__dict__:
+            func.__description.append(_description)
+        else:
+            func.__description = [_description]
+
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+
+            return func(self, *args, **kwargs)
+
+        return wrapper
+
+    return decorated
+
+
+def reorder_list_with(schema, response_code=200, description=None):
+    """
+    Same as reoder_with with as_list = True
+    :param schema:
+    :param response_code:
+    :param description
+    :return:
+    """
+    return reorder_with(schema, True, response_code, description)
+
+
+def tags(*targs):
+    """
+    add tags to operation object
+    :param targs:
+    :return:
+    """
+    def decorated(func):
+        func.__tags = list(targs)
+
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            return func(self, *args, **kwargs)
+
+        return wrapper
+
+    return decorated
+
+
+def reqparser(name, parser):
+    """
+    get reparser
+    :param name:
+    :param parser:
+    :return:
+    """
+
+    def decorated(func):
+
+        func.__reqparser = {"name": name, "parser": parser}
+
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+
+            return func(self, *args, **kwargs)
+
+        return wrapper
+
+    return decorated
+
+
+def slash_join(*args):
+    """
+    Function to join several parts of url
+    :param args:
+    :return:
+    """
+    return "/".join([url[:-1] if url.endswith("/") else url for url in args]).replace('//', '/')
+
+
+def payload():
+    """
+    Return the request response
+    :return:
+    """
+    return request.get_json()
+

@@ -1,13 +1,11 @@
+import sys
+from flask import request
 from flask_restful.reqparse import RequestParser
 from flask_restful_swagger_3 import Resource, swagger
-from tests.models import UserModel
+from tests.fixtures.fixture_models import UserModel, PModel
 
 
-class ParseResource(Resource):
-    @swagger.doc({
-        'tags': ['user'],
-        'description': 'Tests query parameter parser',
-        'parameters': [
+parse_resource_params = [
             {
                 'name': 'str',
                 'description': 'String value',
@@ -59,74 +57,44 @@ class ParseResource(Resource):
                     'format': 'float'
                 }
             }
-        ],
-        'responses': {
-            '200': {
-                'description': 'Parsed values'
-            }
-        }
-    })
+        ]
+
+
+class ParseResource(Resource):
+    @swagger.response(200, description="Quries values")
+    @swagger.parameters(parse_resource_params)
     def get(self, _parser):
         """
-        Returns parsed query parameters.
-        :param _parser: Query parameter parser
+        Returns query parameters.
+        :param _parser: parser containing data of query in url
         """
         args = _parser.parse_args()
 
         return {
-            'str': args.str,
-            'date': args.date.isoformat(),
-            'datetime': args.datetime.isoformat(),
-            'bool': args.bool,
-            'int': args.int,
-            'float': args.float
-        }, 200
+                   'str': args.str,
+                   'date': args.date.isoformat(),
+                   'datetime': args.datetime.isoformat(),
+                   'bool': args.bool,
+                   'int': args.int,
+                   'float': args.float
+               }, 200
 
 
 class UserResource(Resource):
-    @swagger.doc({
-        'tags': ['user'],
-        'description': 'Returns a user',
-        'parameters': [
-            {
-                'name': 'user_id',
-                'description': 'User identifier',
-                'in': 'path',
-                'schema': {
-                    'type': 'integer'
-                }
-            },
-            {
+    @swagger.reorder_with(UserModel, response_code=200, description="Get users")
+    @swagger.parameter({
                 'name': 'name',
                 'description': 'User name',
                 'in': 'query',
                 'schema': {
                     'type': 'string'
                 }
-            }
-        ],
-        'responses': {
-            '200': {
-                'description': 'Get users',
-                'content': {
-                    'application/json': {
-                        'schema': UserModel,
-                        'examples': {
-                            'application/json': {
-                                'id': 1,
-                                'name': 'somebody'
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    })
+            })
     def get(self, user_id, _parser):
         """
         Returns a specific user.
         :param user_id: The user identifier
-        :param _parser: Query parameter parser
+        :param _parser: parser containing data of query in url
         """
         args = _parser.parse_args()
 
@@ -146,26 +114,8 @@ class EntityAddResource(Resource):
         swagger_type = 'password'
     post_parser.add_argument('password_arg', type=PasswordType, required=False)
 
-    @swagger.doc({
-        'tags': ['user'],
-        'description': 'List of entities',
-        'reqparser': {'name': 'EntityAddParser',
-                      'parser': post_parser},
-        'responses': {
-            '200': {
-                'description': 'User',
-                'content': {
-                    'application/json': {
-                        'examples': {
-                            'application/json': {
-                                'id': 1,
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    })
+    @swagger.response(response_code=200, description='User')
+    @swagger.reqparser(name='EntityAddParser', parser=post_parser)
     def post(self):
         """
         Returns a specific user.
@@ -174,3 +124,47 @@ class EntityAddResource(Resource):
 
         name = args.get('name', 'somebody')
         return UserModel(**{'id': id, 'name': name}), 200
+
+
+class BadFormatResourceReqbodyReqparser(Resource):
+    post_parser = RequestParser()
+    post_parser.add_argument('id', type=int, help='id help')
+    post_parser.add_argument('name', type=str)
+    post_parser.add_argument('value', type=float, default=1.1)
+    post_parser.add_argument('private', type=bool, required=True)
+    post_parser.add_argument('type', type=str, choices=['common', 'major', 'minor'])
+
+    @swagger.expected(UserModel, True)
+    @swagger.reqparser(name='parser', parser=post_parser)
+    def post(self):
+        pass
+
+
+class BadFormatUrl(Resource):
+
+    def get(self):
+        pass
+
+
+class PResource(Resource):
+    @swagger.tags('User')
+    @swagger.reorder_with(PModel, response_code=201)
+    @swagger.parameters([
+        {'in': 'query',
+         'name': 'body',
+         'description': 'Request body',
+         'schema': PModel,
+         'required': 'true'}
+    ])
+    def post(self, _parser):
+        """Adds a user."""
+        # Validate request body with schema model
+        args = _parser.parse_args()
+        try:
+            data = PModel(**args)
+            print(data)
+        except ValueError as e:
+            return {'message': e.args[0]}, 400
+
+        return data, 201, {'Location': request.path + '/' + str(data['id'])}
+
