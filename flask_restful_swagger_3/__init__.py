@@ -63,7 +63,7 @@ class Api(restful_Api):
 
         add_parameters(self.__open_api_object, kwargs)
 
-        super().__init__(*args, catch_all_404s=True, **kwargs)
+        super().__init__(*args, **kwargs)
 
         open_api_url = self.__swagger_url(
             url_prefix=swagger_prefix_url,
