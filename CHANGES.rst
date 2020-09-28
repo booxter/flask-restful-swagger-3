@@ -1,3 +1,11 @@
+Version 0.2.1
+-------------
+
+Released 2020-09-28
+
+-   Fix remove-catch_all_404s from call of super class
+
+
 Version 0.2.0
 -------------
 
