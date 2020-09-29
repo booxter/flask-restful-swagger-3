@@ -39,7 +39,7 @@ swagger_blueprint = get_swagger_blueprint(
     title='Example', version='1', servers=servers)
 
 
-app.register_blueprint(swagger_blueprint)
+app.register_blueprint(swagger_blueprint, url_prefix=SWAGGER_URL)
 
 
 if __name__ == '__main__':

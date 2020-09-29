@@ -260,6 +260,7 @@ as the `Api` class to populate the fields of the combined swagger document.
 Finally, register the swagger blueprint along with the blueprints for your
 resources.
 
+Don't forget to specify `url_prefix` with the same url prefix of the swagger blueprint to avoid 404 errors
 ```python
 from flask_restful_swagger_3 import get_swagger_blueprint
 
@@ -271,7 +272,7 @@ docs = []
 # Get user resources
 user_resources = get_user_resources()
 
-SWAGGER_URL = '/api'  # URL for exposing Swagger UI (without trailing '/')
+SWAGGER_URL = '/api/doc'  # URL for exposing Swagger UI (without trailing '/')
 API_URL = 'swagger.json'  # Our API url (can of course be a local resource)
 
 swagger_blueprint = get_swagger_blueprint(
@@ -281,7 +282,7 @@ swagger_blueprint = get_swagger_blueprint(
     title='Example', version='1', servers=servers)
 
 
-app.register_blueprint(swagger_blueprint)
+app.register_blueprint(swagger_blueprint, url_prefix=SWAGGER_URL)
 ```
 
 Refer to the files in the `example` folder for the complete code.
@@ -304,7 +305,7 @@ python app_blueprint.py
 The swagger spec will by default be at `http://localhost:5000/api/doc/swagger.json`. You can change the URL by passing
 `SWAGGER_URL='/my/path'` and `API_URL='myurl' to the `Api` constructor.
 
-You can run explore your api by running : [http://localhost:5000/](http://localhost:5001/)
+You can explore your api by running : [http://localhost:5000/api/doc](http://localhost:5001/api/doc)
 
 To run tests:
 
