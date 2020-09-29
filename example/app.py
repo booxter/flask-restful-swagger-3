@@ -4,8 +4,7 @@
 
 from flask import Flask, url_for
 from flask_cors import CORS
-from flask_restful_swagger_3 import Api, swagger
-from flask_swagger_ui import get_swaggerui_blueprint
+from flask_restful_swagger_3 import Api, swagger, get_swagger_blueprint
 
 from views import UserResource, UserItemResource, GroupResource
 
@@ -28,10 +27,11 @@ swagger.auth = auth
 SWAGGER_URL = '/api/doc'  # URL for exposing Swagger UI (without trailing '/')
 API_URL = 'swagger.json'  # Our API url (can of course be a local resource)
 
-swaggerui_blueprint = get_swaggerui_blueprint(
-    SWAGGER_URL,  # Swagger UI static files will be mapped to '{SWAGGER_URL}/dist/'
-    API_URL
-)
+swagger_blueprint = get_swagger_blueprint(
+    api.open_api_json,
+    swagger_prefix_url=SWAGGER_URL,
+    swagger_url=API_URL,
+    title='Example', version='1', servers=servers)
 
 
 swagger.auth = auth
@@ -40,7 +40,7 @@ api.add_resource(UserResource, '/api/users')
 api.add_resource(UserItemResource, '/api/users/<int:user_id>')
 api.add_resource(GroupResource, '/api/groups/')
 
-app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
+app.register_blueprint(swagger_blueprint)
 
 
 if __name__ == '__main__':

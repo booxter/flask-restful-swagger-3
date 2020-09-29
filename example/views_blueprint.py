@@ -67,7 +67,7 @@ def get_user_resources():
     """
     blueprint = Blueprint('user', __name__)
 
-    api = Api(blueprint, add_api_spec_resource=False)
+    api = Api(blueprint)
 
     api.add_resource(UserResource, '/api/users')
     api.add_resource(UserItemResource, '/api/users/<int:user_id>')

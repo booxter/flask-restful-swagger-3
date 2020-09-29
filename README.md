@@ -244,7 +244,7 @@ def get_user_resources():
     """
     blueprint = Blueprint('user', __name__)
 
-    api = Api(blueprint, add_api_spec_resource=False)
+    api = Api(blueprint)
 
     api.add_resource(UserResource, '/api/users')
     api.add_resource(UserItemResource, '/api/users/<int:user_id>')
@@ -274,7 +274,14 @@ user_resources = get_user_resources()
 SWAGGER_URL = '/api'  # URL for exposing Swagger UI (without trailing '/')
 API_URL = 'swagger.json'  # Our API url (can of course be a local resource)
 
-app.register_blueprint(get_swagger_blueprint(user_resources.open_api_json, "/api/swagger", title='Example', version='1', servers=servers))
+swagger_blueprint = get_swagger_blueprint(
+    user_resources.open_api_json,
+    swagger_prefix_url=SWAGGER_URL,
+    swagger_url=API_URL,
+    title='Example', version='1', servers=servers)
+
+
+app.register_blueprint(swagger_blueprint)
 ```
 
 Refer to the files in the `example` folder for the complete code.
@@ -295,8 +302,9 @@ python app_blueprint.py
 ```
 
 The swagger spec will by default be at `http://localhost:5000/api/doc/swagger.json`. You can change the URL by passing
-`SWAGGER_URL='/my/path'` and `API_URL='myurl' to the `Api` constructor. You can use [swagger-ui](https://github.com/swagger-api/swagger-ui)
-to explore your api. Try it online at [http://petstore.swagger.io/](http://petstore.swagger.io/?url=http://localhost:5000/api/swagger.json)
+`SWAGGER_URL='/my/path'` and `API_URL='myurl' to the `Api` constructor.
+
+You can run explore your api by running : [http://localhost:5000/](http://localhost:5001/)
 
 To run tests:
 

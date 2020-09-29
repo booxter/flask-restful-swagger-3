@@ -9,7 +9,7 @@ def read(file_to_read):
         return f.read()
 
 
-version = '0.2.1'
+version = '0.2.2'
 
 if branch == "develop" or branch == "master":
     version += f".dev{os.getenv('CI_BUILD_ID', None)}"
@@ -22,15 +22,18 @@ setup(
     packages=['flask_restful_swagger_3'],
     package_data={
         'flask_restful_swagger_3': [
+            'templates',
+            'static'
         ]
     },
+    include_package_data=True,
     description='Extract swagger specs from your flask-restful project.'
                 ' Project based on flask-restful-swagger-2 by Soeren Wegener.',
     author='Jonathan ULLINDAH',
     author_email="jonathan.ullindah@gmail.com",
     license='MIT',
     long_description=read('README.rst'),
-    install_requires=['Flask-RESTful>=0.3.7', 'Flask-Cors', 'flask-swagger-ui'],
+    install_requires=['Flask-RESTful>=0.3.7', 'Flask-Cors'],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

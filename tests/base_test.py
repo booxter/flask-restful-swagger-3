@@ -33,7 +33,7 @@ class BaseTestapi:
         app.testing = True
 
         cls.app = app
-        cls.api = Api(cls.app, )
+        cls.api = Api(cls.app)
         cls.api.add_resource(ParseResource, '/parse')
         cls.api.add_resource(UserResource, '/users/<int:user_id>')
         cls.api.add_resource(EntityAddResource, '/entities/')
