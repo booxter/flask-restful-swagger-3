@@ -74,8 +74,9 @@ class TestApi(BaseTestapi):
 
         r = self.client_app.get('/api/doc/swagger.json')
         spec = json.loads(r.data.decode())
-        print(spec)
-        assert 0
+        assert spec['openapi'] == '3.0.2'
+        assert 'info' in spec
+        assert 'paths' in spec
 
     def test_other(self):
         r = self.client_app.post('/api/users?id=0&name=string&mail=john.doe@butcher.com&keys=john&keys=max')
