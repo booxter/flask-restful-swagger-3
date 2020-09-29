@@ -88,7 +88,7 @@ You can decorate your Api endpoiints with several decorators to build to swagger
 List of decorators
 ^^^^^^^^^^^^^^^^^^
 
-*You need to import ``swagger`` from ``flask_restful_swagger_3``*
+You need to import ``swagger`` from ``flask_restful_swagger_3``
 
 -  ``swagger.tags``: Allow to group operations with a list of tags
    (argument accepted: a list os strings)
@@ -318,6 +318,8 @@ accepts the same keyword parameters as the ``Api`` class to populate the
 fields of the combined swagger document. Finally, register the swagger
 blueprint along with the blueprints for your resources.
 
+Don't forget to specify ``url_prefix`` with the same url prefix of the swagger blueprint to avoid 404 errors
+
 .. code:: python
 
     from flask_restful_swagger_3 import get_swagger_blueprint
@@ -330,10 +332,17 @@ blueprint along with the blueprints for your resources.
     # Get user resources
     user_resources = get_user_resources()
 
-    SWAGGER_URL = '/api'  # URL for exposing Swagger UI (without trailing '/')
+    SWAGGER_URL = '/api/doc'  # URL for exposing Swagger UI (without trailing '/')
     API_URL = 'swagger.json'  # Our API url (can of course be a local resource)
 
-    app.register_blueprint(get_swagger_blueprint(user_resources.open_api_json, "/api/swagger", title='Example', version='1', servers=servers))
+    swagger_blueprint = get_swagger_blueprint(
+        user_resources.open_api_json,
+        swagger_prefix_url=SWAGGER_URL,
+        swagger_url=API_URL,
+        title='Example', version='1', servers=servers)
+
+
+    app.register_blueprint(swagger_blueprint, url_prefix=SWAGGER_URL)
 
 Refer to the files in the ``example`` folder for the complete code.
 
@@ -356,10 +365,9 @@ To run the example which uses Flask Blueprints:
 The swagger spec will by default be at
 ``http://localhost:5000/api/doc/swagger.json``. You can change the URL
 by passing ``SWAGGER_URL='/my/path'`` and
-``API_URL='myurl' to the``\ Api\` constructor. You can use
-`swagger-ui <https://github.com/swagger-api/swagger-ui>`__ to explore
-your api. Try it online at
-`http://petstore.swagger.io/ <http://petstore.swagger.io/?url=http://localhost:5000/api/swagger.json>`__
+``API_URL='myurl'`` to the ``Api`` constructor.
+
+You can explore your api by running : `http://localhost:5000/api/doc <http://localhost:5001/api/doc>`__
 
 To run tests:
 
