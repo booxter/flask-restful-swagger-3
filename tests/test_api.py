@@ -67,7 +67,16 @@ class TestApi(BaseTestapi):
             self.api.add_resource(BadFormatUrl, 'bad_url/')
 
     def test_get_swagger_blueprint(self):
-        assert get_swagger_blueprint(self.api.open_api_json)
+        blueprint = get_swagger_blueprint(self.api.open_api_json)
+        self.app.register_blueprint(blueprint)
+        r = self.client_app.get('/')
+        assert r.status_code == 200
+
+        r = self.client_app.get('/api/doc/swagger.json')
+        spec = json.loads(r.data.decode())
+        assert spec['openapi'] == '3.0.2'
+        assert 'info' in spec
+        assert 'paths' in spec
 
     def test_other(self):
         r = self.client_app.post('/api/users?id=0&name=string&mail=john.doe@butcher.com&keys=john&keys=max')

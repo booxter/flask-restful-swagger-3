@@ -1,6 +1,6 @@
+import os
 import json
-
-from flask import Blueprint, request
+from flask import Blueprint, request, render_template, send_from_directory
 from flask_restful import (Api as restful_Api, abort as flask_abort,
                            Resource as flask_Resource)
 
@@ -101,7 +101,6 @@ class Api(restful_Api):
                 #     raise ValidationError("parameters and reqparser can't be in same spec")
 
                 if reqparser and request_body:
-                    print(reqparser)
                     raise ValidationError("requestBody and reqparser can't be in same spec")
 
                 if reqparser:
@@ -194,10 +193,6 @@ class Api(restful_Api):
     def __swagger_url(url_prefix: str, url: str):
         new_url = slash_join(url_prefix, url)
 
-        if new_url.endswith("/"):
-            return f"{new_url}swagger.json"
-        if not new_url.endswith("swagger.json"):
-            return f"{new_url}/swagger.json"
         return new_url
 
     @staticmethod
@@ -535,27 +530,76 @@ class ExampleEncoder(json.JSONEncoder):
         return obj.example()
 
 
-def get_swagger_blueprint(swagger_object, api_spec_url='/api/doc/swagger', **kwargs):
+def get_swagger_blueprint(
+        swagger_object,
+        swagger_prefix_url="/api/doc",
+        swagger_url="/swagger.json",
+        config=None,
+        oauth_config=None,
+        **kwargs):
     """
     Returns a Flask blueprint to serve the given list of swagger document objects.
     :param swagger_object: The swagger objects
-    :param api_spec_url: The URL path that serves the swagger specification document
+    :param swagger_prefix_url: The URL prefix path that serves the swagger specification document
+    :param swagger_url: The URL that serves the swagger specification document
+    :param config: Additional config
+    :param oauth_config
     :return: A Flask blueprint
     """
 
     add_parameters(swagger_object, kwargs)
+    app_name = kwargs.get('title', 'Swagger UI')
 
-    blueprint = Blueprint('swagger', __name__)
+    blueprint = Blueprint('swagger', __name__, static_folder='static', template_folder='templates')
 
     api = restful_Api(blueprint)
 
-    api_spec_urls = [
-        '{0}.json'.format(api_spec_url),
-        '{0}.html'.format(api_spec_url),
-    ]
+    new_url = slash_join(swagger_prefix_url, swagger_url)
+
+    default_config = {
+        'app_name': app_name,
+        'dom_id': '#swagger-ui',
+        'url': new_url,
+        'layout': 'StandaloneLayout',
+        'deepLinking': True
+    }
+
+    if config:
+        default_config.update(config)
+
+    fields = {
+        # Some fields are used directly in template
+        'base_url': swagger_prefix_url,
+        'app_name': default_config.pop('app_name'),
+        # Rest are just serialized into json string for inclusion in the .js file
+        'config_json': json.dumps(default_config),
+
+    }
+    if oauth_config:
+        fields['oauth_config_json'] = json.dumps(oauth_config)
 
     api.add_resource(create_open_api_resource(swagger_object),
-                     *api_spec_urls, endpoint='swagger')
+                     new_url)
+
+    @blueprint.route('/')
+    @blueprint.route('/<path:path>')
+    def show(path=None):
+        if not path or path == 'index.html':
+            if not default_config.get('oauth2RedirectUrl', None):
+                default_config.update(
+                    {"oauth2RedirectUrl": os.path.join(request.base_url, "oauth2-redirect.html")}
+                )
+                fields['config_json'] = json.dumps(default_config)
+            return render_template('index.template.html', **fields)
+        else:
+            return send_from_directory(
+                # A bit of a hack to not pollute the default /static path with our files.
+                os.path.join(
+                    blueprint.root_path,
+                    blueprint._static_folder
+                ),
+                path
+            )
 
     return blueprint
 
