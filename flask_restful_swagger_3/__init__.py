@@ -550,7 +550,7 @@ def get_swagger_blueprint(
     add_parameters(swagger_object, kwargs)
     app_name = kwargs.get('title', 'Swagger UI')
 
-    blueprint = Blueprint('swagger', __name__, static_folder='static', template_folder='templates')
+    blueprint = Blueprint('swagger', __name__, static_folder='static', template_folder='templates', url_prefix=swagger_prefix_url)
 
     api = restful_Api(blueprint)
 
