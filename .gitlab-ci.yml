@@ -3,6 +3,7 @@ image: python:3.7.4-stretch
 stages:
   - test
   - deploy
+  - publish
 
 before_script:
   - python3 -m pip install --upgrade pip
@@ -30,14 +31,26 @@ deploy-staging:
     - develop
     - master
 
-deploy-prod:
+deploy:
   stage: deploy
   when: manual
   variables:
-    TWINE_USERNAME: $PROD_USERNAME
-    TWINE_PASSWORD: $PROD_PASSWORD
-    # TWINE_REPOSITORY_URL: $TEST_PYPI_REPOSITORY_URL
+    TWINE_USERNAME: $STAGING_USERNAME
+    TWINE_PASSWORD: $STAGING_PASSWORD
+    TWINE_REPOSITORY_URL: $TEST_PYPI_REPOSITORY_URL
   script:
     - twine upload --verbose dist/*
+  only:
+    - develop
+    - master
+
+
+publish:
+  stage: publish
+  variables:
+    TWINE_USERNAME: $PROD_USERNAME
+    TWINE_PASSWORD: $PROD_PASSWORD
+  script:
+     - twine upload --verbose dist/*
   only:
     - tags
