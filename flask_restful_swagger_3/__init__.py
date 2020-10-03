@@ -1,6 +1,6 @@
 import os
 import json
-from flask import Blueprint, request, render_template, send_from_directory
+from flask import Blueprint, request, render_template, send_from_directory, current_app
 from flask_restful import (Api as restful_Api, abort as flask_abort,
                            Resource as flask_Resource)
 
@@ -557,10 +557,15 @@ def get_swagger_blueprint(
 
     new_url = slash_join(swagger_prefix_url, swagger_url)
 
+    try:
+        new_url_with_prefix = slash_join(current_app.config.get('SWAGGER_BLUEPRINT_URL_PREFIX', ''), new_url)
+    except RuntimeError:
+        new_url_with_prefix = new_url
+
     default_config = {
         'app_name': app_name,
         'dom_id': '#swagger-ui',
-        'url': new_url,
+        'url': new_url_with_prefix,
         'layout': 'StandaloneLayout',
         'deepLinking': True
     }

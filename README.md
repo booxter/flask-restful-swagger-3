@@ -254,13 +254,12 @@ def get_user_resources():
 
 In your initialization module, collect the swagger document objects for each
 set of resources, then use the `get_swagger_blueprint` function to combine the
-documents and specify the URL to serve them at (default is '/api/doc/swagger').
+documents and specify the URL to serve them at (default is '/api/doc').
 Note that the `get_swagger_blueprint` function accepts the same keyword parameters
 as the `Api` class to populate the fields of the combined swagger document.
 Finally, register the swagger blueprint along with the blueprints for your
 resources.
 
-Don't forget to specify `url_prefix` with the same url prefix of the swagger blueprint to avoid 404 errors
 ```python
 from flask_restful_swagger_3 import get_swagger_blueprint
 
@@ -282,7 +281,28 @@ swagger_blueprint = get_swagger_blueprint(
     title='Example', version='1', servers=servers)
 
 
-app.register_blueprint(swagger_blueprint, url_prefix=SWAGGER_URL)
+app.register_blueprint(swagger_blueprint)
+```
+
+
+If you want to add a url_prefix to your swagger Blueprint, you must add `SWAGGER_BLUEPRINT_URL_PREFIX` to the config of flask object and call `get_swagger_blueprint` in `app_context`
+
+```python
+from flask_restful_swagger_3 import get_swagger_blueprint
+
+...
+
+app.config.setdefault('SWAGGER_BLUEPRINT_URL_PREFIX', '/swagger')
+
+with app.app_context():
+    swagger_blueprint = get_swagger_blueprint(
+        user_resources.open_api_json,
+        swagger_prefix_url=SWAGGER_URL,
+        swagger_url=API_URL,
+        title='Example', version='1', servers=servers)
+
+
+app.register_blueprint(swagger_blueprint, url_prefix='/swagger')
 ```
 
 Refer to the files in the `example` folder for the complete code.

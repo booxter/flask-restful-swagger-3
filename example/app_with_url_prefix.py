@@ -13,7 +13,7 @@ app = Flask(__name__)
 CORS(app)
 
 servers = [{"url": "http://localhost:5000"}]
-api = Api(app, version='5', servers=servers, title="APP")
+api = Api(app, version='5', servers=servers, title="APP", add_api_spec_resource=False)
 
 
 def auth(api_key, endpoint, method):
@@ -27,11 +27,15 @@ swagger.auth = auth
 SWAGGER_URL = '/api/doc'  # URL for exposing Swagger UI (without trailing '/')
 API_URL = 'swagger.json'  # Our API url (can of course be a local resource)
 
-swagger_blueprint = get_swagger_blueprint(
-    api.open_api_json,
-    swagger_prefix_url=SWAGGER_URL,
-    swagger_url=API_URL,
-    title='Example', version='1', servers=servers)
+app.config.setdefault('SWAGGER_BLUEPRINT_URL_PREFIX', '/swagger')
+swagger_blueprint_url_prefix = app.config.get('SWAGGER_BLUEPRINT_URL_PREFIX', '')
+
+with app.app_context():
+    swagger_blueprint = get_swagger_blueprint(
+        api.open_api_json,
+        swagger_prefix_url=SWAGGER_URL,
+        swagger_url=API_URL,
+        title='Example', version='1', servers=servers)
 
 
 swagger.auth = auth
@@ -40,7 +44,8 @@ api.add_resource(UserResource, '/api/users')
 api.add_resource(UserItemResource, '/api/users/<int:user_id>')
 api.add_resource(GroupResource, '/api/groups/')
 
-app.register_blueprint(swagger_blueprint)
+app.register_blueprint(swagger_blueprint, url_prefix=swagger_blueprint_url_prefix)
+# use can also use app.register_blueprint(swagger_blueprint, url_prefix='/swagger')
 
 
 if __name__ == '__main__':

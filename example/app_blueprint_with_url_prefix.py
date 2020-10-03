@@ -31,16 +31,17 @@ servers = [{"url": "http://localhost:5000"}]
 SWAGGER_URL = '/api/doc'  # URL for exposing Swagger UI (without trailing '/')
 API_URL = 'swagger.json'  # Our API url (can of course be a local resource)
 
-# app.config.setdefault('SWAGGER_BLUEPRINT_URL_PREFIX', '/swagger')
+app.config.setdefault('SWAGGER_BLUEPRINT_URL_PREFIX', '/swagger')
 
-swagger_blueprint = get_swagger_blueprint(
-    user_resources.open_api_json,
-    swagger_prefix_url=SWAGGER_URL,
-    swagger_url=API_URL,
-    title='Example', version='1', servers=servers)
+with app.app_context():
+    swagger_blueprint = get_swagger_blueprint(
+        user_resources.open_api_json,
+        swagger_prefix_url=SWAGGER_URL,
+        swagger_url=API_URL,
+        title='Example', version='1', servers=servers)
 
 
-app.register_blueprint(swagger_blueprint)
+app.register_blueprint(swagger_blueprint, url_prefix='/swagger')
 
 
 if __name__ == '__main__':
