@@ -1,3 +1,15 @@
+Version 0.2.5
+-------------
+
+Released 2020-10-03
+
+-   Fix Blueprint url_prefix html_code 308 permanent redirect
+-   Fix Blueprint 404 error when adding url_prefix
+-   Update documentation
+-   Update Test
+-   Add Examples
+
+
 Version 0.2.3
 -------------
 
