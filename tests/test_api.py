@@ -172,7 +172,7 @@ class TestFlaskSwaggerRequestParser(BaseTestapi):
 class TestBlueprint(BaseTest):
     def setup_method(self):
         self.blueprint = Blueprint('user', __name__)
-        self.api = Api(self.blueprint, '/test')
+        self.api = Api(self.blueprint, '/test', add_api_spec_resource=False)
         self.api.add_resource(UserResource, '/users')
 
     def test_get_spec_object(self):
@@ -185,6 +185,10 @@ class TestBlueprint(BaseTest):
         assert 'paths' in spec
         assert 'parameters' in spec['paths']['/users']['get']
         assert spec['openapi'] == '3.0.2'
+
+    def test_get_spec_object_from_url_should_return_404(self):
+        r = self.client_app.get('/api/doc/swagger.json')
+        assert r.status_code == 404
 
     def test_get_swagger_blueprint(self):
         swagger_blueprint = get_swagger_blueprint(self.api.open_api_json, swagger_blueprint_name="swagger_app")
@@ -209,7 +213,9 @@ class TestBlueprint(BaseTest):
         assert 'paths' in spec
 
     def test_get_swagger_blueprint_with_url_prefix(self):
-        swagger_blueprint = get_swagger_blueprint(self.api.open_api_json, swagger_blueprint_name="swagger_app_with_url_prefix")
+        self.app.config.setdefault('SWAGGER_BLUEPRINT_URL_PREFIX', '/my_swagger')
+        with self.ctx:
+            swagger_blueprint = get_swagger_blueprint(self.api.open_api_json, swagger_blueprint_name="swagger_app_with_url_prefix")
         self.app.register_blueprint(swagger_blueprint, url_prefix="/my_swagger")
         swagger_ui_result = self.client_app.get('/my_swagger')
         assert swagger_ui_result.status_code == 200
