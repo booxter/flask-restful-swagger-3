@@ -549,8 +549,9 @@ def get_swagger_blueprint(
 
     add_parameters(swagger_object, kwargs)
     app_name = kwargs.get('title', 'Swagger UI')
+    swagger_blueprint_name = kwargs.get('swagger_blueprint_name', 'swagger')
 
-    blueprint = Blueprint('swagger', __name__, static_folder='static', template_folder='templates', url_prefix=swagger_prefix_url)
+    blueprint = Blueprint(swagger_blueprint_name, __name__, static_folder='static', template_folder='templates')
 
     api = restful_Api(blueprint)
 
@@ -581,8 +582,8 @@ def get_swagger_blueprint(
     api.add_resource(create_open_api_resource(swagger_object),
                      new_url)
 
-    @blueprint.route('/')
-    @blueprint.route('/<path:path>')
+    @blueprint.route('/', strict_slashes=False)
+    @blueprint.route('/<path:path>', strict_slashes=False)
     def show(path=None):
         if not path or path == 'index.html':
             if not default_config.get('oauth2RedirectUrl', None):
