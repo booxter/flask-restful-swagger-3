@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, Blueprint
 from flask_restful_swagger_3 import Api
 from tests.fixtures.fixture_resources import ParseResource, UserResource, EntityAddResource, PResource
 
@@ -36,7 +36,7 @@ class BaseTestapi:
         cls.api = Api(cls.app)
         cls.api.add_resource(ParseResource, '/parse')
         cls.api.add_resource(UserResource, '/users/<int:user_id>')
-        cls.api.add_resource(EntityAddResource, '/entities/')
+        cls.api.add_resource(EntityAddResource, '/entities')
         cls.api.add_resource(PResource, '/api/users')
         cls.ctx = app.app_context()
         cls.ctx.push()
@@ -45,3 +45,30 @@ class BaseTestapi:
     @classmethod
     def teardown_class(cls):
         cls.ctx.pop()
+
+
+# class BaseTestBlueprint:
+#     app = None
+#     api = None
+#     client_app = None
+#     blueprint = None
+#
+#     @classmethod
+#     def setup_class(cls):
+#         app = Flask(__name__)
+#         app.testing = True
+#         blueprint = Blueprint('test', __name__)
+#         cls.api = Api(blueprint)
+#         cls.app = app
+#         cls.api.add_resource(ParseResource, '/parse')
+#         cls.api.add_resource(UserResource, '/users/<int:user_id>')
+#         cls.api.add_resource(EntityAddResource, '/entities')
+#         cls.api.add_resource(PResource, '/api/users')
+#         cls.app.register_blueprint(blueprint)
+#         cls.ctx = app.app_context()
+#         cls.ctx.push()
+#         cls.client_app = app.test_client()
+#
+#     @classmethod
+#     def teardown_class(cls):
+#         cls.ctx.pop()
