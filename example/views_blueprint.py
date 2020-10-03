@@ -1,4 +1,4 @@
-from flask import Blueprint, request
+from flask import request, Blueprint
 from flask_restful.reqparse import RequestParser
 
 from flask_restful_swagger_3 import Api, swagger, Resource

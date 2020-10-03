@@ -214,16 +214,16 @@ class TestBlueprint(BaseTest):
         swagger_ui_result = self.client_app.get('/my_swagger')
         assert swagger_ui_result.status_code == 200
 
-        swagger_bundle = self.client_app.get('/swagger-ui-bundle.js')
+        swagger_bundle = self.client_app.get('/my_swagger/swagger-ui-bundle.js')
         assert swagger_bundle.status_code == 200
 
-        swagger_standalone = self.client_app.get('/swagger-ui-standalone-preset.js')
+        swagger_standalone = self.client_app.get('/my_swagger/swagger-ui-standalone-preset.js')
         assert swagger_standalone.status_code == 200
 
-        swagger_css = self.client_app.get('/swagger-ui.css')
+        swagger_css = self.client_app.get('/my_swagger/swagger-ui.css')
         assert swagger_css.status_code == 200
 
-        spec_result = self.client_app.get('/api/doc/swagger.json')
+        spec_result = self.client_app.get('/my_swagger/api/doc/swagger.json')
         assert spec_result.status_code == 200
         spec = json.loads(spec_result.data.decode())
         assert spec['openapi'] == '3.0.2'
