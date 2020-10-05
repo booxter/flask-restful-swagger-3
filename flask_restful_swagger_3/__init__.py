@@ -557,12 +557,14 @@ def get_swagger_blueprint(
 
     new_url = slash_join(swagger_prefix_url, swagger_url)
 
-    swagger_blueprint_url_prefix = current_app.config.get('SWAGGER_BLUEPRINT_URL_PREFIX', '/')
-
     try:
-        new_url_with_prefix = slash_join(swagger_blueprint_url_prefix, new_url)
+        blueprint_url_prefix = current_app.config.get(
+            "SWAGGER_BLUEPRINT_URL_PREFIX", ""
+        )
     except RuntimeError:
-        new_url_with_prefix = new_url
+        blueprint_url_prefix = ""
+
+    new_url_with_prefix = slash_join(blueprint_url_prefix, new_url)
 
     default_config = {
         'app_name': app_name,
@@ -577,7 +579,7 @@ def get_swagger_blueprint(
 
     fields = {
         # Some fields are used directly in template
-        'base_url': swagger_blueprint_url_prefix,
+        'base_url': blueprint_url_prefix,
         'app_name': default_config.pop('app_name'),
         # Rest are just serialized into json string for inclusion in the .js file
         'config_json': json.dumps(default_config),
