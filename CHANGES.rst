@@ -1,3 +1,11 @@
+Version 0.2.6
+-------------
+
+Released 2020-10-06
+
+-   Fix Blueprint url
+
+
 Version 0.2.5
 -------------
 
