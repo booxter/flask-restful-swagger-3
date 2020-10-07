@@ -1,4 +1,3 @@
-import sys
 from flask import request
 from flask_restful.reqparse import RequestParser
 from flask_restful_swagger_3 import Resource, swagger
@@ -171,4 +170,11 @@ class PResource(Resource):
             return {'message': e.args[0]}, 400
 
         return data, 201, {'Location': request.path + '/' + str(data['id'])}
+
+
+@swagger.tags('Some data')
+class OneResource(Resource):
+    @swagger.response(200, description="Some data")
+    def get(self):
+        return {'data': 'some data'}, 200
 

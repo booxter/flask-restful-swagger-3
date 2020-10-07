@@ -4,7 +4,6 @@ from flask import Blueprint
 from tests.base_test import BaseTest, BaseTestapi
 from tests.fixtures.fixture_resources import BadFormatResourceReqbodyReqparser, BadFormatUrl, UserResource
 from flask_restful_swagger_3 import swagger, get_swagger_blueprint, Api
-import time
 
 
 class TestApi(BaseTestapi):
@@ -28,6 +27,7 @@ class TestApi(BaseTestapi):
         assert 'info' in data
         assert 'paths' in data
         assert data['openapi'] == '3.0.2'
+        assert data['paths']['/some_data']['get']['tags'] == ['Some data']
 
     def test_parse_query_parameters(self):
         r = self.client_app.get('/parse?str=Test' +
