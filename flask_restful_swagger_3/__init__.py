@@ -92,9 +92,10 @@ class Api(restful_Api):
                 params = f.__dict__.get("__params", [])
                 reqparser = f.__dict__.get("__reqparser", [])
                 tags = f.__dict__.get("__tags", [])
+                no_content_list = f.__dict__.get("__no_content", [])
 
                 assert (
-                    len(response_code_list) == len(description_list) == len(model_list)
+                    len(response_code_list) == len(description_list) == len(model_list) == len(no_content_list)
                 )
 
                 # if reqparser and params:
@@ -149,6 +150,7 @@ class Api(restful_Api):
                         ref=ref or req_ref,
                         example_schema=example_schema or req_example,
                         description=description_list[index],
+                        no_content=no_content_list[index]
                     )
 
                     for url in args:
@@ -218,7 +220,7 @@ class Api(restful_Api):
             }
 
     @staticmethod
-    def __build_responses(response_code, description="", ref=None, example_schema=None):
+    def __build_responses(response_code, description="", ref=None, example_schema=None, no_content=False):
         responses = {response_code: {"content": {"application/json": {}}}}
 
         if description:
@@ -231,6 +233,9 @@ class Api(restful_Api):
         if example_schema:
             _example = {"example": example_schema}
             responses[response_code]["content"]["application/json"].update(_example)
+
+        if no_content:
+            del responses[response_code]["content"]
 
         return responses
 

@@ -56,6 +56,12 @@ class TestApi(BaseTestapi):
         assert data['id'] == 1
         assert data['name'] == 'test'
 
+    def test_delete_user_return_no_content(self):
+        r = self.client_app.get('api/doc/swagger.json')
+        assert r.status_code == 200
+        data = json.loads(r.data.decode())
+        assert 'content' not in data['paths']['/users/{user_id}']['delete']['responses']['204']
+
     def test_resource_reqbody_reqparser_should_not_validate(self):
         with pytest.raises(swagger.ValidationError):
             self.api.add_resource(BadFormatResourceReqbodyReqparser, '/bad_resource')

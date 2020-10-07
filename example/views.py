@@ -48,7 +48,8 @@ class UserResource(Resource):
 class UserItemResource(Resource):
     @swagger.tags('usersItem')
     @swagger.reorder_with(UserModel, response_code=200)
-    @swagger.response(response_code=404)
+    @swagger.response(response_code=404, description="User not found")
+    @swagger.response(response_code=400, description="Some errors without content", no_content=True)
     def get(self, user_id):
         """Returns a specific user."""
         user = next((u for u in known_users if u['id'] == user_id), None)

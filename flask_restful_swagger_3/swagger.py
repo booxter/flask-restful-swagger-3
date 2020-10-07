@@ -774,12 +774,13 @@ def parameter(param={}, **kwargs):
     return parameters(params)
 
 
-def response(response_code, description=None, schema=None):
+def response(response_code, description=None, schema=None, no_content=False):
     """
     Decorator to add a response to the url
     :param response_code:
     :param description:
     :param schema:
+    :param no_content:
     :return:
     """
     def decorated(func):
@@ -800,6 +801,11 @@ def response(response_code, description=None, schema=None):
             func.__schema.append(schema)
         else:
             func.__schema = [schema]
+
+        if "__no_content" in func.__dict__:
+            func.__no_content.append(no_content)
+        else:
+            func.__no_content = [no_content]
 
         @wraps(func)
         def wrapper(self, *args, **kwargs):
@@ -838,6 +844,11 @@ def reorder_with(schema, as_list: bool = False, response_code=200, description=N
             func.__description.append(_description)
         else:
             func.__description = [_description]
+
+        if "__no_content" in func.__dict__:
+            func.__no_content.append(False)
+        else:
+            func.__no_content = [False]
 
         @wraps(func)
         def wrapper(self, *args, **kwargs):
