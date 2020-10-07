@@ -101,6 +101,10 @@ class UserResource(Resource):
         name = args.get('name', 'somebody')
         return UserModel(**{'id': user_id, 'name': name}), 200
 
+    @swagger.response(204, description="No content", no_content=True)
+    def delete(self, user_id):
+        return f"User {user_id} deleted", 204
+
 
 class EntityAddResource(Resource):
     post_parser = RequestParser()

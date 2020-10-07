@@ -103,7 +103,7 @@ You need to import ``swagger`` from ``flask_restful_swagger_3``
 -  ``swagger.response``: Add a response to the method (argument
    accepted: ``response_code``: The response to add to the method,
    ``description``: The description of the response, ``schema``: The
-   schema to apply to the method)
+   schema to apply to the method,  ``no_content``: if ``True``: ``content`` is not added to response, default: ``False``)
 -  ``swagger.parameter``: Add a parameter to the method (Don't use the
    ``path``\ parameter, it will be added automatically with a url with
    variable: ``/users:<int:user_id>``) (argument accepted: \_in, name,
