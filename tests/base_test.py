@@ -1,6 +1,6 @@
-from flask import Flask, Blueprint
+from flask import Flask
 from flask_restful_swagger_3 import Api
-from tests.fixtures.fixture_resources import ParseResource, UserResource, EntityAddResource, PResource
+from tests.fixtures.fixture_resources import ParseResource, UserResource, EntityAddResource, PResource, OneResource
 
 
 class BaseTest:
@@ -38,6 +38,7 @@ class BaseTestapi:
         cls.api.add_resource(UserResource, '/users/<int:user_id>')
         cls.api.add_resource(EntityAddResource, '/entities')
         cls.api.add_resource(PResource, '/api/users')
+        cls.api.add_resource(OneResource, '/some_data')
         cls.ctx = app.app_context()
         cls.ctx.push()
         cls.client_app = app.test_client()

@@ -9,8 +9,8 @@ from models import UserModel, ErrorModel
 known_users = []
 
 
+@swagger.tags('User')
 class UserResource(Resource):
-    @swagger.tags('User')
     @swagger.reorder_with(UserModel, response_code=200)
     @swagger.parameters([{'in':'query', 'name':'body', 'description':'Request body', 'schema':UserModel, 'required': 'true'}])
     def post(self, _parser):
@@ -28,7 +28,6 @@ class UserResource(Resource):
 
         return data, 201, {'Location': request.path + '/' + str(data['id'])}
 
-    @swagger.tags('User')
     @swagger.reorder_with(UserModel, response_code=200)
     @swagger.parameters(
         [{'in': 'query', 'name': 'body', 'description': 'Request body', 'schema': {'type': 'string'}, 'required': 'true'}])

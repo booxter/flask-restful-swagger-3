@@ -1,11 +1,9 @@
-import os
 import collections
 import re
 import inspect
-import json
 from functools import wraps
 
-from flask import request, Blueprint, render_template, send_from_directory
+from flask import request
 from flask_restful import Resource, reqparse, inputs
 
 
@@ -871,20 +869,56 @@ def reorder_list_with(schema, response_code=200, description=None):
     return reorder_with(schema, True, response_code, description)
 
 
-def tags(*targs):
+def __tags_method(func, *_tags):
     """
-    add tags to operation object
-    :param targs:
+    Decorate method
+    :param func:
+    :param _tags:
     :return:
     """
-    def decorated(func):
-        func.__tags = list(targs)
+    func.__tags = list(_tags)
 
-        @wraps(func)
-        def wrapper(self, *args, **kwargs):
-            return func(self, *args, **kwargs)
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        return func(self, *args, **kwargs)
 
-        return wrapper
+    return wrapper
+
+
+def __tags_decorated_class(cls, *_tags):
+    """
+    Decorate each method of Resource class
+    :param cls:
+    :param _tags:
+    :return:
+    """
+    for name, m in inspect.getmembers(cls, lambda x: inspect.isfunction(x) or inspect.ismethod(x)):
+        if name in ['get', 'post', 'patch', 'put', 'delete']:
+            setattr(cls, name, __tags_method(m, *_tags))
+    return cls
+
+
+def tags(*_tags):
+    """
+    add tags to operation object
+    :param _tags:
+    :return:
+    """
+    def decorated(func_or_class):
+        klass = None
+        function = None
+
+        if inspect.isclass(func_or_class):
+            klass = func_or_class
+
+        if inspect.ismethod(func_or_class) or inspect.isfunction(func_or_class):
+            function = func_or_class
+
+        if klass:
+            return __tags_decorated_class(klass, *_tags)
+
+        if function:
+            return __tags_method(function, *_tags)
 
     return decorated
 

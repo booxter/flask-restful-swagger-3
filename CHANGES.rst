@@ -1,3 +1,11 @@
+Version 0.2.8
+-------------
+
+Released 2020-10-07
+
+-  tags can now decorate Resource class to automatically set tags of each method
+
+
 Version 0.2.7
 -------------
 
