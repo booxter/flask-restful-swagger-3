@@ -1,3 +1,11 @@
+Version 0.2.7
+-------------
+
+Released 2020-10-07
+
+-   Allow no content in response
+
+
 Version 0.2.6
 -------------
 
