@@ -3,7 +3,7 @@ from flask_restful.reqparse import RequestParser
 
 from flask_restful_swagger_3 import swagger, Resource
 
-from models import UserModel, ErrorModel
+from models import UserModel, ErrorModel, ProductSchema
 
 
 known_users = []
@@ -16,7 +16,6 @@ class UserResource(Resource):
     def post(self, _parser):
         """Adds a user."""
         # Validate request body with schema model
-        print("Ma valeur retournée", _parser.parse_args()['name'])
         try:
             data = UserModel(**_parser.parse_args())
 
@@ -79,3 +78,35 @@ class GroupResource(Resource):
         self.added_groups.append(new_group)
 
         return new_group, 201
+
+
+list_of_products = [
+    {
+        "id": "1",
+        "name": "rumsteck",
+        "picture": "rumsteck.jpeg",
+        "unit_price": 20,
+        "unit": "kg",
+        "quantity": 40,
+        "category": {"id": "1", "name": "beef"},
+    },
+    {
+        "id": "2",
+        "name": "rumsteck2",
+        "picture": "rumsteck.jpeg",
+        "unit_price": 20,
+        "unit": "kg",
+        "quantity": 40,
+        "category": {"id": "1", "name": "sheep"},
+    },
+]
+
+
+@swagger.tags("Products")
+class ProductResource(Resource):
+    @swagger.reorder_list_with(ProductSchema, response_code=200)
+    def get(self):
+        """List products"""
+        products = list(map(lambda product: ProductSchema(**product), list_of_products))
+
+        return products, 200

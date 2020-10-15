@@ -38,3 +38,23 @@ class ErrorModel(Schema):
             'type': 'string'
         }
     }
+
+
+class CategorySchema(Schema):
+    type = "object"
+    properties = {"id": {"type": "string"}, "name": {"type": "string"}}
+    required = ["name"]
+
+
+class ProductSchema(Schema):
+    type = "object"
+    properties = {
+        "id": {"type": "string"},
+        "name": {"type": "string"},
+        "picture": {"type": "string"},
+        "unit_price": {"type": "number"},
+        "unit": {"type": "string"},
+        "quantity": {"type": "number"},
+        "category": CategorySchema,
+    }
+    required = ["name", "unit_price", "quantity", "category"]

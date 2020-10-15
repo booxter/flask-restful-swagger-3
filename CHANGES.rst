@@ -1,3 +1,11 @@
+Version 0.2.9
+-------------
+
+Released 2020-10-15
+
+-  Fix nested schema validation tool
+
+
 Version 0.2.8
 -------------
 

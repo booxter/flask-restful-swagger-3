@@ -472,26 +472,32 @@ class Schema(dict):
                     raise ValueError(
                             'The model "{0}" does not have an attribute "{1}"'.format(self.__class__.__name__, k))
                 if type(self.properties[k]) == type:
+                    if self.properties[k].type == 'object':
+                        self.properties[k](**v)
                     prop = self.properties[k].definitions()
                 else:
                     prop = self.properties[k]
+
                 if 'type' in prop:
-                    type_ = prop['type']
-                    if type_ == 'integer' and not isinstance(v, int):
-                        raise ValueError('The attribute "{0}" must be an int, but was "{1}"'.format(k, type(v)))
-                    if type_ == 'number' and not isinstance(v, int) and not isinstance(v, float):
-                        raise ValueError(
-                                'The attribute "{0}" must be an int or float, but was "{1}"'.format(k, type(v)))
-                    if type_ == 'string' and not isinstance(v, str):
-                        raise ValueError('The attribute "{0}" must be a string, but was "{1}"'.format(k, type(v)))
-                    if type_ == 'boolean' and not isinstance(v, bool):
-                        raise ValueError('The attribute "{0}" must be an int, but was "{1}"'.format(k, type(v)))
+                    self.check_type(prop['type'], k, v)
                 self[k] = v
 
         if hasattr(self, 'required'):
             for key in self.required:
                 if key not in kwargs:
                     raise ValueError('The attribute "{0}" is required'.format(key))
+
+    @staticmethod
+    def check_type(type_, key, value):
+        if type_ == 'integer' and not isinstance(value, int):
+            raise ValueError('The attribute "{0}" must be an int, but was "{1}"'.format(key, type(value)))
+        if type_ == 'number' and not isinstance(value, int) and not isinstance(value, float):
+            raise ValueError(
+                'The attribute "{0}" must be an int or float, but was "{1}"'.format(key, type(value)))
+        if type_ == 'string' and not isinstance(value, str):
+            raise ValueError('The attribute "{0}" must be a string, but was "{1}"'.format(key, type(value)))
+        if type_ == 'boolean' and not isinstance(value, bool):
+            raise ValueError('The attribute "{0}" must be an int, but was "{1}"'.format(key, type(value)))
 
     @classmethod
     def reference(cls):

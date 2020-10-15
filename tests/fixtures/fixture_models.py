@@ -71,3 +71,78 @@ class SchemaTestModel(Schema):
         }
     }
     required = ['id']
+
+
+class Property(Schema):
+    type = 'object'
+    properties = {
+        'property1': {
+            'type': 'string',
+        },
+        'property2': {
+            'type': 'string',
+        }
+    }
+
+
+class Category(Schema):
+    type = 'object'
+    properties = {
+        'id': {
+            'type': 'integer'
+        },
+        'name': {
+            'type': 'string'
+        },
+        'property': Property
+    }
+    required = ['id', 'name']
+
+
+class NestedSchema(Schema):
+    """
+    Test nested schema model.
+    """
+    type = 'object'
+    properties = {
+        'id': {
+            'type': 'integer'
+        },
+        'name': {
+            'type': 'string'
+        },
+        'category': Category,
+        'mail': EmailModel
+    }
+    required = ['id']
+
+
+def fixture_nested_obj():
+    return {
+        'id': 1,
+        'name': 'fake',
+        'category': {
+            'id': 1,
+            'name': 'fake category',
+            'property': {
+                'property1': 'fake',
+                'property2': 'fake'
+            }
+        },
+        'mail': 'tes@test.fr'
+    }
+
+
+def fixture_bad_type_in_nested_obj():
+    return {
+        'id': 1,
+        'name': 'fake',
+        'category': {
+            'id': 1,
+            'name': 'fake category',
+            'property': {
+                'property1': 2,
+                'property2': 'fake'
+            }
+        }
+    }
