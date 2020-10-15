@@ -4,9 +4,10 @@
 
 from flask import Flask
 from flask_cors import CORS
+
 from flask_restful_swagger_3 import Api, swagger, get_swagger_blueprint
 
-from views import UserResource, UserItemResource, GroupResource
+from views import UserResource, UserItemResource, GroupResource, ProductResource
 
 
 app = Flask(__name__)
@@ -36,9 +37,10 @@ swagger_blueprint = get_swagger_blueprint(
 
 swagger.auth = auth
 
-api.add_resource(UserResource, '/api/users')
-api.add_resource(UserItemResource, '/api/users/<int:user_id>')
-api.add_resource(GroupResource, '/api/groups/')
+api.add_resource(UserResource, '/users')
+api.add_resource(UserItemResource, '/users/<int:user_id>')
+api.add_resource(GroupResource, '/groups')
+api.add_resource(ProductResource, '/products')
 
 app.register_blueprint(swagger_blueprint)
 
