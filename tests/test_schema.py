@@ -53,3 +53,8 @@ class TestSchema:
             self, sub_schema_with_bad_super_schema, obj_of_sub_schema):
         with pytest.raises(TypeError):
             sub_schema_with_bad_super_schema(**obj_of_sub_schema)
+
+    def test_should_raise_error_when_validate_obj_with_sub_schema_with_super_schema_without_type(
+            self, sub_schema_with_super_schema_without_type, obj_of_sub_schema):
+        with pytest.raises(TypeError):
+            sub_schema_with_super_schema_without_type(**obj_of_sub_schema)

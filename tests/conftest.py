@@ -8,7 +8,7 @@ from tests.fixtures.fixture_models import (
     fixture_user_model, fixture_enum_schema,
     fixture_enum_schema_set, fixture_enum_schema_tuple,
     fixture_bad_enum_schema, fixture_bad_enum_schema_type, fixture_sub_schema, fixture_bad_sub_schema,
-    fixture_sub_schema_with_bad_super_schema)
+    fixture_sub_schema_with_bad_super_schema, fixture_sub_schema_with_super_schema_without_type)
 
 
 # Schemas
@@ -69,12 +69,17 @@ def sub_schema():
 
 @pytest.fixture
 def bad_sub_schema():
-    return fixture_bad_sub_schema
+    return fixture_bad_sub_schema()
 
 
 @pytest.fixture
 def sub_schema_with_bad_super_schema():
-    return fixture_sub_schema_with_bad_super_schema
+    return fixture_sub_schema_with_bad_super_schema()
+
+
+@pytest.fixture
+def sub_schema_with_super_schema_without_type():
+    return fixture_sub_schema_with_super_schema_without_type()
 
 
 # Objects

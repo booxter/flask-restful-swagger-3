@@ -1,3 +1,12 @@
+Version 0.3.2
+-------------
+
+Released 2020-10-16
+
+-  Merge required of super schema with required of sub schema
+-  Fix Test
+
+
 Version 0.3.1
 -------------
 
