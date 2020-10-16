@@ -478,8 +478,18 @@ class Schema(dict):
                 else:
                     prop = self.properties[k]
 
+                type_ = None
                 if 'type' in prop:
-                    self.check_type(prop['type'], k, v)
+                    type_ = prop['type']
+                self.check_type(type_, k, v)
+
+                if 'enum' in prop:
+                    if type(prop['enum']) not in [set, list, tuple]:
+                        raise TypeError(f"'enum' is must be 'list', 'set' or 'tuple', but was {type(prop['enum'])}")
+                    for item in list(prop['enum']):
+                        self.check_enum_type(type_, item)
+                    if v not in prop['enum']:
+                        raise ValueError(f"{k} must have {' or '.join(prop['enum'])} but have {v}")
                 self[k] = v
 
         if hasattr(self, 'required'):
@@ -489,15 +499,29 @@ class Schema(dict):
 
     @staticmethod
     def check_type(type_, key, value):
-        if type_ == 'integer' and not isinstance(value, int):
-            raise ValueError('The attribute "{0}" must be an int, but was "{1}"'.format(key, type(value)))
-        if type_ == 'number' and not isinstance(value, int) and not isinstance(value, float):
-            raise ValueError(
-                'The attribute "{0}" must be an int or float, but was "{1}"'.format(key, type(value)))
-        if type_ == 'string' and not isinstance(value, str):
-            raise ValueError('The attribute "{0}" must be a string, but was "{1}"'.format(key, type(value)))
-        if type_ == 'boolean' and not isinstance(value, bool):
-            raise ValueError('The attribute "{0}" must be an int, but was "{1}"'.format(key, type(value)))
+        if type_:
+            if type_ == 'integer' and not isinstance(value, int):
+                raise ValueError(f'The attribute "{key}" must be an int, but was "{type(value)}"')
+            if type_ == 'number' and not isinstance(value, int) and not isinstance(value, float):
+                raise ValueError(
+                    f'The attribute "{key}" must be an int or float, but was "{type(value)}"')
+            if type_ == 'string' and not isinstance(value, str):
+                raise ValueError(f'The attribute "{key}" must be a string, but was "{type(value)}"')
+            if type_ == 'boolean' and not isinstance(value, bool):
+                raise ValueError(f'The attribute "{key}" must be an int, but was "{type(value)}"')
+
+    @staticmethod
+    def check_enum_type(type_, value):
+        if type_:
+            if type_ == 'integer' and not isinstance(value, int):
+                raise ValueError(f'The enum "{value}" must be an int, but was "{type(value)}"')
+            if type_ == 'number' and not isinstance(value, int) and not isinstance(value, float):
+                raise ValueError(
+                    f'The enum "{value}" must be an int or float, but was "{type(value)}"')
+            if type_ == 'string' and not isinstance(value, str):
+                raise ValueError(f'The enum "{value}" must be a string, but was "{type(value)}"')
+            if type_ == 'boolean' and not isinstance(value, bool):
+                raise ValueError(f'The enum "{value}" must be an int, but was "{type(value)}"')
 
     @classmethod
     def reference(cls):

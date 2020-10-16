@@ -1,3 +1,11 @@
+Version 0.3.0
+-------------
+
+Released 2020-10-16
+
+-  Add enum to Schema
+
+
 Version 0.2.9
 -------------
 

@@ -9,7 +9,7 @@ def read(file_to_read):
         return f.read()
 
 
-version = '0.2.9'
+version = '0.3.0'
 
 if branch == "develop":
     version += f".dev{os.getenv('CI_BUILD_ID', None)}"

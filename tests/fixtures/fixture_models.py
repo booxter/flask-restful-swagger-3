@@ -31,6 +31,10 @@ class PModel(Schema):
     required = ['name']
 
 
+def fixture_pmodel():
+    return PModel
+
+
 class UserModel(Schema):
     type = 'object'
     properties = {
@@ -45,6 +49,10 @@ class UserModel(Schema):
     required = ['name']
 
 
+def fixture_user_model():
+    return UserModel
+
+
 class SwaggerTestModel(Schema):
     """
     Test schema model.
@@ -55,6 +63,10 @@ class SwaggerTestModel(Schema):
             'type': 'string'
         }
     }
+
+
+def fixture_swagger_test_model():
+    return SwaggerTestModel
 
 
 class SchemaTestModel(Schema):
@@ -71,6 +83,10 @@ class SchemaTestModel(Schema):
         }
     }
     required = ['id']
+
+
+def fixture_schema_test_model():
+    return SchemaTestModel
 
 
 class Property(Schema):
@@ -117,32 +133,80 @@ class NestedSchema(Schema):
     required = ['id']
 
 
-def fixture_nested_obj():
-    return {
-        'id': 1,
-        'name': 'fake',
-        'category': {
-            'id': 1,
-            'name': 'fake category',
-            'property': {
-                'property1': 'fake',
-                'property2': 'fake'
-            }
-        },
-        'mail': 'tes@test.fr'
-    }
+def fixture_nested_schema():
+    return NestedSchema
 
 
-def fixture_bad_type_in_nested_obj():
-    return {
-        'id': 1,
-        'name': 'fake',
-        'category': {
-            'id': 1,
-            'name': 'fake category',
-            'property': {
-                'property1': 2,
-                'property2': 'fake'
-            }
+class EnumSchema(Schema):
+    """
+    Test nested schema model.
+    """
+    type = 'object'
+    properties = {
+        'my_choice': {
+            'type': 'string',
+            'enum': ['choice_1', 'choice_2']
         }
     }
+
+
+def fixture_enum_schema():
+    return EnumSchema
+
+
+class EnumSchemaSet(Schema):
+    type = 'object'
+    properties = {
+        'my_choice': {
+            'type': 'string',
+            'enum': {'choice_1', 'choice_2'}
+        }
+    }
+
+
+def fixture_enum_schema_set():
+    return EnumSchemaSet
+
+
+class EnumSchemaTuple(Schema):
+    type = 'object'
+    properties = {
+        'my_choice': {
+            'type': 'string',
+            'enum': ('choice_1', 'choice_2')
+        }
+    }
+
+
+def fixture_enum_schema_tuple():
+    return EnumSchemaTuple
+
+
+class BadEnumSchema(Schema):
+    type = 'object'
+    properties = {
+        'my_choice': {
+            'type': 'string',
+            'enum': 'choice1'
+        }
+    }
+
+
+def fixture_bad_enum_schema():
+    return BadEnumSchema
+
+
+class BadEnumSchemaType(Schema):
+    type = 'object'
+    properties = {
+        'my_choice': {
+            'type': 'string',
+            'enum': ['choice1', 2]
+        }
+    }
+
+
+def fixture_bad_enum_schema_type():
+    return BadEnumSchemaType
+
+
