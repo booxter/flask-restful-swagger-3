@@ -1,3 +1,11 @@
+Version 0.3.1
+-------------
+
+Released 2020-10-16
+
+-  Create super schema is now possible
+
+
 Version 0.3.0
 -------------
 

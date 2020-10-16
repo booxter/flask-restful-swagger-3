@@ -1,5 +1,7 @@
 import os
 import json
+from copy import deepcopy
+
 from flask import Blueprint, request, render_template, send_from_directory, current_app
 from flask_restful import (Api as restful_Api, abort as flask_abort,
                            Resource as flask_Resource)
@@ -466,6 +468,20 @@ class Schema(dict):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        super_classes = [
+            schema for schema_name, schema in REGISTRY_SCHEMA.items()
+            if schema_name != self.__class__.__name__ and isinstance(self, schema)
+        ]
+        for super_class in super_classes:
+            if super_class.type != 'object':
+                raise TypeError("You can inherit only schema of type 'object'")
+            if self.type != super_class.type:
+                raise TypeError(f"You can't add type to '{self.__class__.__name__}'" +
+                                 f"because it inherits of type of '{super_class.__name__}'")
+            if super_class.properties:
+                if self.properties:
+                    self.properties.update(deepcopy(super_class.properties))
+
         if self.properties:
             for k, v in kwargs.items():
                 if k not in self.properties:

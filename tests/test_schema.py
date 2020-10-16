@@ -40,3 +40,16 @@ class TestSchema:
     def test_should_not_validate_shema_with_enum_item_bad_type(self, bad_enum_schema_type, enum_obj):
         with pytest.raises(ValueError):
             bad_enum_schema_type(**enum_obj)
+
+    def test_should_validate_obj_with_sub_schema(self, sub_schema, obj_of_sub_schema):
+        sub_schema(**obj_of_sub_schema)
+
+    def test_should_raise_error_when_validate_obj_with_sub_schema_different_type(
+            self, bad_sub_schema, obj_of_sub_schema):
+        with pytest.raises(TypeError):
+            bad_sub_schema(**obj_of_sub_schema)
+
+    def test_should_raise_error_when_validate_obj_with_sub_schema_with_bad_super_schema(
+            self, sub_schema_with_bad_super_schema, obj_of_sub_schema):
+        with pytest.raises(TypeError):
+            sub_schema_with_bad_super_schema(**obj_of_sub_schema)

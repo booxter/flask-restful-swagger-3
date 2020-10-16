@@ -39,3 +39,11 @@ def fixture_enum_obj_not_in_choice():
     return {
         'my_choice': 'not_in_choice'
     }
+
+
+def fixture_obj_of_sub_schema():
+    return {
+        "id": "my_id",
+        "super_attribute": "super",
+        "sub_attribute": "sub"
+    }
