@@ -210,3 +210,40 @@ def fixture_bad_enum_schema_type():
     return BadEnumSchemaType
 
 
+class SuperSchema(Schema):
+    type = "object"
+    properties = {
+        "id": {"type": "string"},
+        "super_attribute": {"type": "string"}
+    }
+
+
+class BadSuperSchema(Schema):
+    type = "string"
+
+
+class SubSchema(SuperSchema):
+    properties = {
+        "sub_attribute": {"type": "string"}
+    }
+
+
+class SubSchemaWithBadSuperSchema(BadSuperSchema):
+    pass
+
+
+class BadSubSchema(Schema):
+    type = "string"
+
+
+def fixture_sub_schema():
+    return SubSchema
+
+
+def fixture_bad_sub_schema():
+    return BadSubSchema
+
+
+def fixture_sub_schema_with_bad_super_schema():
+    return SubSchemaWithBadSuperSchema
+
