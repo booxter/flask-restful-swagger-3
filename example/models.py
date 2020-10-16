@@ -26,7 +26,11 @@ class UserModel(Schema):
             'type': 'string'
         },
         'mail': EmailModel,
-        'keys': KeysModel.array()
+        'keys': KeysModel.array(),
+        'user_type': {
+            'type': 'string',
+            'enum': ['admin', 'regular']
+        }
     }
     required = ['name']
 
