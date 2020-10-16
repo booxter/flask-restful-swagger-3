@@ -181,6 +181,48 @@ Create a model by inheriting from ``flask_restful_swagger_3.Schema``
         }
         required = ['name']
 
+SuperModel
+^^^^^^^^^^
+
+You can create super model:
+
+``WARNING`` :
+
+-  You can create only super model with type ``object``
+-  The inherited model must same type of super model (The best use is to not add type to inherited Schema)
+
+.. code:: python
+
+    from flask_restful_swagger_3 import Schema
+
+    class PersonModel(Schema):
+        type = 'object'
+        properties = {
+            'id': {
+                'type': 'integer',
+                'format': 'int64'
+            },
+            'name': {
+                'type': 'string'
+            }
+        }
+
+    class EmployeeModel(PersonModel):
+        properties = {
+            'role': {
+                'type': 'string'
+            }
+        }
+
+    employee_1 = {
+        'id': 1,
+        'name': 'john',
+        'role': 'admin'
+    }
+
+    EmployeeModel(**employee_1) # will validate the object
+
+
 You can build your models according to the `swagger schema object
 specification <http://swagger.io/specification/#schemaObject>`__
 
