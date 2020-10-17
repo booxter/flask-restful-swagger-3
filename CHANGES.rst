@@ -1,3 +1,12 @@
+Version 0.3.3
+-------------
+
+Released 2020-10-16
+
+-  Fix type, properties and required of schema
+-  Update tests
+
+
 Version 0.3.2
 -------------
 

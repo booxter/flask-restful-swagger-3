@@ -44,6 +44,12 @@ class TestSchema:
     def test_should_validate_obj_with_sub_schema(self, sub_schema, obj_of_sub_schema):
         sub_schema(**obj_of_sub_schema)
 
+    def test_should_valdate_definitions_of_sub_schema(self, sub_schema, expected_definition_of_sub_schema):
+        assert sub_schema.definitions() == expected_definition_of_sub_schema
+
+    def test_should_valdate_example_of_sub_schema(self, sub_schema, expected_example_of_sub_schema):
+        assert sub_schema.example() == expected_example_of_sub_schema
+
     def test_should_raise_error_when_validate_obj_with_sub_schema_different_type(
             self, bad_sub_schema, obj_of_sub_schema):
         with pytest.raises(TypeError):
