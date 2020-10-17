@@ -50,17 +50,17 @@ class TestSchema:
     def test_should_valdate_example_of_sub_schema(self, sub_schema, expected_example_of_sub_schema):
         assert sub_schema.example() == expected_example_of_sub_schema
 
-    def test_should_raise_error_when_validate_obj_with_sub_schema_different_type(
-            self, bad_sub_schema, obj_of_sub_schema):
+    def test_should_raise_error_when_create_sub_schema_with_different_type(
+            self, bad_sub_schema):
         with pytest.raises(TypeError):
-            bad_sub_schema(**obj_of_sub_schema)
+            bad_sub_schema()
 
-    def test_should_raise_error_when_validate_obj_with_sub_schema_with_bad_super_schema(
-            self, sub_schema_with_bad_super_schema, obj_of_sub_schema):
+    def test_should_raise_error_when_create_sub_schema_with_bad_super_schema(
+            self, sub_schema_with_bad_super_schema):
         with pytest.raises(TypeError):
-            sub_schema_with_bad_super_schema(**obj_of_sub_schema)
+            sub_schema_with_bad_super_schema()
 
-    def test_should_raise_error_when_validate_obj_with_sub_schema_with_super_schema_without_type(
-            self, sub_schema_with_super_schema_without_type, obj_of_sub_schema):
+    def test_should_raise_error_when_create_sub_schema_with_super_schema_without_type(
+            self, sub_schema_with_super_schema_without_type):
         with pytest.raises(TypeError):
-            sub_schema_with_super_schema_without_type(**obj_of_sub_schema)
+            sub_schema_with_super_schema_without_type()
