@@ -15,13 +15,19 @@ class KeysModel(Schema):
     }
 
 
-class UserModel(Schema):
+class SuperUserModel(Schema):
     type = 'object'
     properties = {
         'id': {
             'type': 'integer',
             'format': 'int64',
         },
+    }
+    required = ['id']
+
+
+class UserModel(SuperUserModel):
+    properties = {
         'name': {
             'type': 'string'
         },

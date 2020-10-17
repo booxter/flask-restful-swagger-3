@@ -240,32 +240,26 @@ class SubSchema(SuperSchema):
     required = ['sub_attribute']
 
 
-class SubSchemaWithSuperSchemaWithoutType(SuperSchemaWithoutType):
-    properties = {
-        'sub_attribute': {'type': 'string'}
-    }
-    required = ['sub_attribute']
-
-
-class SubSchemaWithBadSuperSchema(BadSuperSchema):
-    pass
-
-
-class BadSubSchema(SuperSchema):
-    type = 'string'
-
-
 def fixture_sub_schema():
     return SubSchema
 
 
 def fixture_bad_sub_schema():
+    class BadSubSchema(SuperSchema):
+        type = 'string'
     return BadSubSchema
 
 
 def fixture_sub_schema_with_bad_super_schema():
+    class SubSchemaWithBadSuperSchema(BadSuperSchema):
+        pass
     return SubSchemaWithBadSuperSchema
 
 
 def fixture_sub_schema_with_super_schema_without_type():
+    class SubSchemaWithSuperSchemaWithoutType(SuperSchemaWithoutType):
+        properties = {
+            'sub_attribute': {'type': 'string'}
+        }
+        required = ['sub_attribute']
     return SubSchemaWithSuperSchemaWithoutType

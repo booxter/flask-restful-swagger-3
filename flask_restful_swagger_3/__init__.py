@@ -465,28 +465,28 @@ class Schema(dict):
         if cls not in REGISTRY_SCHEMA:
             register_schema(cls)
         super().__init_subclass__(**kwargs)
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
         super_classes = [
             schema for schema_name, schema in REGISTRY_SCHEMA.items()
-            if schema_name != self.__class__.__name__ and isinstance(self, schema)
+            if schema_name != cls.__name__ and issubclass(cls, schema)
         ]
         for super_class in super_classes:
             if not hasattr(super_class, 'type'):
                 raise TypeError("You can inherit only schema of type 'object'")
             if super_class.type != 'object':
                 raise TypeError("You can inherit only schema of type 'object'")
-            if self.__class__.type != super_class.type:
-                raise TypeError(f"You can't add type to '{self.__class__.__name__}'" +
-                                 f"because it inherits of type of '{super_class.__name__}'")
+            if cls.type != super_class.type:
+                raise TypeError(f"You can't add type to '{cls.__name__}'" +
+                                f"because it inherits of type of '{super_class.__name__}'")
             if super_class.properties:
-                if self.__class__.properties:
-                    self.__class__.properties.update(deepcopy(super_class.properties))
+                if cls.properties:
+                    cls.properties.update(deepcopy(super_class.properties))
 
             if hasattr(super_class, 'required'):
-                if hasattr(self.__class__, 'required'):
-                    self.__class__.required += super_class.required
+                if hasattr(cls, 'required'):
+                    cls.required += super_class.required
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         if self.properties:
             for k, v in kwargs.items():

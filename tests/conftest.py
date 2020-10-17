@@ -70,17 +70,17 @@ def sub_schema():
 
 @pytest.fixture
 def bad_sub_schema():
-    return fixture_bad_sub_schema()
+    return fixture_bad_sub_schema
 
 
 @pytest.fixture
 def sub_schema_with_bad_super_schema():
-    return fixture_sub_schema_with_bad_super_schema()
+    return fixture_sub_schema_with_bad_super_schema
 
 
 @pytest.fixture
 def sub_schema_with_super_schema_without_type():
-    return fixture_sub_schema_with_super_schema_without_type()
+    return fixture_sub_schema_with_super_schema_without_type
 
 
 # Objects

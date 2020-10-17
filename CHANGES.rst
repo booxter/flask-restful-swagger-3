@@ -1,3 +1,12 @@
+Version 0.3.4
+-------------
+
+Released 2020-10-16
+
+-  Fix Creation of sub schema
+-  Fix tests
+
+
 Version 0.3.3
 -------------
 
