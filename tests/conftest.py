@@ -1,7 +1,8 @@
 import pytest
 from tests.fixtures.fixture_object import (
     fixture_nested_obj, fixture_bad_type_in_nested_obj,
-    fixture_enum_obj, fixture_enum_obj_not_in_choice, fixture_obj_of_sub_schema)
+    fixture_enum_obj, fixture_enum_obj_not_in_choice, fixture_obj_of_sub_schema,
+    fixture_expected_definition_of_sub_schema, fixture_expected_example_of_sub_schema)
 from tests.fixtures.fixture_models import (
     fixture_schema_test_model, fixture_nested_schema,
     fixture_pmodel, fixture_swagger_test_model,
@@ -106,3 +107,15 @@ def enum_obj_not_in_choice():
 @pytest.fixture
 def obj_of_sub_schema():
     return fixture_obj_of_sub_schema()
+
+
+# Definitions
+@pytest.fixture
+def expected_definition_of_sub_schema():
+    return fixture_expected_definition_of_sub_schema()
+
+
+# Examples
+@pytest.fixture
+def expected_example_of_sub_schema():
+    return fixture_expected_example_of_sub_schema()

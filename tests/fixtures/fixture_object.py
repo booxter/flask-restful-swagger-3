@@ -48,3 +48,24 @@ def fixture_obj_of_sub_schema():
         'other_attribute': 'other',
         'sub_attribute': 'sub'
     }
+
+
+def fixture_expected_definition_of_sub_schema():
+    return {
+        'properties': {
+            'sub_attribute': {'type': 'string'},
+            'id': {'type': 'string'},
+            'super_attribute': {'type': 'string'},
+            'other_attribute': {'type': 'string'}
+        },
+        'required': ['sub_attribute', 'other_attribute']
+    }
+
+
+def fixture_expected_example_of_sub_schema():
+    return {
+        'sub_attribute': 'string',
+        'id': 'string',
+        'super_attribute': 'string',
+        'other_attribute': 'string'
+    }

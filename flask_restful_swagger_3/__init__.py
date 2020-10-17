@@ -477,16 +477,16 @@ class Schema(dict):
                 raise TypeError("You can inherit only schema of type 'object'")
             if super_class.type != 'object':
                 raise TypeError("You can inherit only schema of type 'object'")
-            if self.type != super_class.type:
+            if self.__class__.type != super_class.type:
                 raise TypeError(f"You can't add type to '{self.__class__.__name__}'" +
                                  f"because it inherits of type of '{super_class.__name__}'")
             if super_class.properties:
-                if self.properties:
-                    self.properties.update(deepcopy(super_class.properties))
+                if self.__class__.properties:
+                    self.__class__.properties.update(deepcopy(super_class.properties))
 
             if hasattr(super_class, 'required'):
-                if hasattr(self, 'required'):
-                    self.required += super_class.required
+                if hasattr(self.__class__, 'required'):
+                    self.__class__.required += super_class.required
 
         if self.properties:
             for k, v in kwargs.items():
