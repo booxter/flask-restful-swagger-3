@@ -1,3 +1,12 @@
+Version 0.3.5
+-------------
+
+Released 2020-10-19
+
+-  Fix validation of schema array
+-  Update tests
+
+
 Version 0.3.4
 -------------
 

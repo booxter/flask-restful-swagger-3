@@ -64,3 +64,52 @@ class TestSchema:
             self, sub_schema_with_super_schema_without_type):
         with pytest.raises(TypeError):
             sub_schema_with_super_schema_without_type()
+
+    def test_should_validate_array_schema_object_ok(self, schema_with_array, object_with_array):
+        schema_with_array(**object_with_array)
+
+    def test_should_raise_error_when_array_schema_object_bad_type(self, schema_with_array, object_with_array):
+        object_with_array["my_test_array"] = "test"
+        with pytest.raises(ValueError):
+            schema_with_array(**object_with_array)
+
+    def test_should_raise_error_when_array_schema_object_bad_item_type(self, schema_with_array, object_with_array):
+        object_with_array["my_test_array"][0]["prop1"] = 1
+        with pytest.raises(ValueError):
+            schema_with_array(**object_with_array)
+
+    def test_should_raise_error_when_array_schema_object_item_not_exist(self, schema_with_array, object_with_array):
+        object_with_array["my_test_array"][0]["not_exist"] = "not_exist"
+        with pytest.raises(ValueError):
+            schema_with_array(**object_with_array)
+
+    def test_should_validate_array_schema_ok(self, pmodel):
+        object_with_string_array = {
+            "name": "test",
+            "keys": ["keys1", "keys2"]
+        }
+        pmodel(**object_with_string_array)
+
+    def test_should_raise_error_when_array_has_all_bad_type_ok(self, pmodel):
+        object_with_string_array = {
+            "name": "test",
+            "keys": [1, 2]
+        }
+        with pytest.raises(ValueError):
+            pmodel(**object_with_string_array)
+
+    def test_should_raise_error_when_array_has_some_bad_type_ok(self, pmodel):
+        object_with_string_array = {
+            "name": "test",
+            "keys": ["keys1", 2]
+        }
+        with pytest.raises(ValueError):
+            pmodel(**object_with_string_array)
+
+    def test_should_raise_error_when_ar(self, pmodel):
+        object_with_string_array = {
+            "name": "test",
+            "keys": []
+        }
+        with pytest.raises(ValueError):
+            pmodel(**object_with_string_array)

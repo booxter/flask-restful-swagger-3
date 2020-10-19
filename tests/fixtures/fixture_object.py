@@ -69,3 +69,17 @@ def fixture_expected_example_of_sub_schema():
         'super_attribute': 'string',
         'other_attribute': 'string'
     }
+
+
+def fixture_object_with_array():
+    return {
+        "id": 1,
+        "name": "test",
+        "my_test_array": [
+            {
+                "id": 1,
+                "prop1": "test",
+                "prop2": "test"
+            }
+        ]
+    }

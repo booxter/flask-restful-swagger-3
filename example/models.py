@@ -7,12 +7,7 @@ class EmailModel(Schema):
 
 
 class KeysModel(Schema):
-    type = 'object'
-    properties = {
-        'name': {
-            'type': 'string'
-        }
-    }
+    type = 'string'
 
 
 class SuperUserModel(Schema):

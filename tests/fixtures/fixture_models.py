@@ -7,12 +7,7 @@ class EmailModel(Schema):
 
 
 class KeysModel(Schema):
-    type = 'object'
-    properties = {
-        'name': {
-            'type': 'string'
-        }
-    }
+    type = 'string'
 
 
 class PModel(Schema):
@@ -28,7 +23,7 @@ class PModel(Schema):
         'mail': EmailModel,
         'keys': KeysModel.array()
     }
-    required = ['name']
+    required = ['name', 'keys']
 
 
 def fixture_pmodel():
@@ -263,3 +258,24 @@ def fixture_sub_schema_with_super_schema_without_type():
         }
         required = ['sub_attribute']
     return SubSchemaWithSuperSchemaWithoutType
+
+
+def fixture_schema_with_array():
+    class ArraySchema(Schema):
+        type = "object"
+        properties = {
+            "id": {"type": "integer"},
+            "prop1": {"type": "string"},
+            "prop2": {"type": "string"}
+        }
+        required = ["prop1"]
+
+    class TestSchema(Schema):
+        type = "object"
+        properties = {
+            "id": {"type": "integer"},
+            "name": {"type": "string"},
+            "my_test_array": ArraySchema.array()
+        }
+
+    return TestSchema

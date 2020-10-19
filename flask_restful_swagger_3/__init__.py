@@ -465,10 +465,7 @@ class Schema(dict):
         if cls not in REGISTRY_SCHEMA:
             register_schema(cls)
         super().__init_subclass__(**kwargs)
-        super_classes = [
-            schema for schema_name, schema in REGISTRY_SCHEMA.items()
-            if schema_name != cls.__name__ and issubclass(cls, schema)
-        ]
+        super_classes = cls.get_super_classes(cls)
         for super_class in super_classes:
             if not hasattr(super_class, 'type'):
                 raise TypeError("You can inherit only schema of type 'object'")
@@ -520,8 +517,24 @@ class Schema(dict):
                     raise ValueError('The attribute "{0}" is required'.format(key))
 
     @staticmethod
-    def check_type(type_, key, value):
+    def get_super_classes(cls):
+        return [
+            schema for schema_name, schema in REGISTRY_SCHEMA.items()
+            if schema_name != cls.__name__ and issubclass(cls, schema)
+        ]
+
+    def check_type(self, type_, key, value):
         if type_:
+            if type_ == 'array':
+                if not isinstance(value, list):
+                    raise ValueError(f'The attribute "{key}" must be a list, but was "{type(value)}')
+                cls = self.properties[key].get('items')
+                if cls and cls.__name__ in REGISTRY_SCHEMA:
+                    if cls.type == 'object':
+                        for v in value:
+                            cls(**v)
+                    else:
+                        self.check_array_type(cls.type, key, value)
             if type_ == 'integer' and not isinstance(value, int):
                 raise ValueError(f'The attribute "{key}" must be an int, but was "{type(value)}"')
             if type_ == 'number' and not isinstance(value, int) and not isinstance(value, float):
@@ -531,6 +544,19 @@ class Schema(dict):
                 raise ValueError(f'The attribute "{key}" must be a string, but was "{type(value)}"')
             if type_ == 'boolean' and not isinstance(value, bool):
                 raise ValueError(f'The attribute "{key}" must be an int, but was "{type(value)}"')
+
+    @staticmethod
+    def check_array_type(type_, key, value):
+        if type_:
+            if type_ == 'integer' and not all([isinstance(v, int) for v in value]):
+                raise ValueError(f'The list "{key}" must have all items of type int')
+            if type_ == 'number' and not all([isinstance(v, int) for v in value]) and not all([isinstance(v, float) for v in value]):
+                raise ValueError(
+                    f'The list "{key}" must have all items of type int or float')
+            if type_ == 'string' and not all([isinstance(v, str) for v in value]):
+                raise ValueError(f'The list "{key}" must have all items of type string')
+            if type_ == 'boolean' and not all([isinstance(v, bool) for v in value]):
+                raise ValueError(f'The list "{key}" must have all items of type string')
 
     @staticmethod
     def check_enum_type(type_, value):
