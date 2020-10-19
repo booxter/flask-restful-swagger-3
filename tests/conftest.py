@@ -2,14 +2,15 @@ import pytest
 from tests.fixtures.fixture_object import (
     fixture_nested_obj, fixture_bad_type_in_nested_obj,
     fixture_enum_obj, fixture_enum_obj_not_in_choice, fixture_obj_of_sub_schema,
-    fixture_expected_definition_of_sub_schema, fixture_expected_example_of_sub_schema)
+    fixture_expected_definition_of_sub_schema, fixture_expected_example_of_sub_schema, fixture_object_with_array)
 from tests.fixtures.fixture_models import (
     fixture_schema_test_model, fixture_nested_schema,
     fixture_pmodel, fixture_swagger_test_model,
     fixture_user_model, fixture_enum_schema,
     fixture_enum_schema_set, fixture_enum_schema_tuple,
     fixture_bad_enum_schema, fixture_bad_enum_schema_type, fixture_sub_schema, fixture_bad_sub_schema,
-    fixture_sub_schema_with_bad_super_schema, fixture_sub_schema_with_super_schema_without_type)
+    fixture_sub_schema_with_bad_super_schema, fixture_sub_schema_with_super_schema_without_type,
+    fixture_schema_with_array)
 
 
 # Schemas
@@ -83,6 +84,11 @@ def sub_schema_with_super_schema_without_type():
     return fixture_sub_schema_with_super_schema_without_type
 
 
+@pytest.fixture
+def schema_with_array():
+    return fixture_schema_with_array()
+
+
 # Objects
 @pytest.fixture
 def nested_obj():
@@ -107,6 +113,11 @@ def enum_obj_not_in_choice():
 @pytest.fixture
 def obj_of_sub_schema():
     return fixture_obj_of_sub_schema()
+
+
+@pytest.fixture
+def object_with_array():
+    return fixture_object_with_array()
 
 
 # Definitions
