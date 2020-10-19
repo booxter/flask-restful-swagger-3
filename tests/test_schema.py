@@ -105,11 +105,3 @@ class TestSchema:
         }
         with pytest.raises(ValueError):
             pmodel(**object_with_string_array)
-
-    def test_should_raise_error_when_ar(self, pmodel):
-        object_with_string_array = {
-            "name": "test",
-            "keys": []
-        }
-        with pytest.raises(ValueError):
-            pmodel(**object_with_string_array)
