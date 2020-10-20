@@ -596,9 +596,15 @@ class Schema(dict):
             if properties:
                 for k, v in properties.items():
                     if type(v) is dict:
-                        example.update({k: v["type"]})
+                        val = v["type"]
+                        if v["type"] == "array":
+                            if "items" in v:
+                                val = [v["items"].example()]
+                            else:
+                                val = []
                     else:
-                        example.update({k: v})
+                        val = [] if v == "array" else v
+                    example.update({k: val})
             return example
         return items["type"]
 
