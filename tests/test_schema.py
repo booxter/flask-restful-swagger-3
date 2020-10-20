@@ -68,6 +68,19 @@ class TestSchema:
     def test_should_validate_array_schema_object_ok(self, schema_with_array, object_with_array):
         schema_with_array(**object_with_array)
 
+    def test_should_validate_array_schema_object_example(self, schema_with_array):
+        assert schema_with_array.example() == {
+            'id': 'integer',
+            'my_test_array': [
+                {
+                    'id': 'integer',
+                    'prop1': 'string',
+                    'prop2': 'string'
+                }
+            ],
+            'name': 'string'
+        }
+
     def test_should_raise_error_when_array_schema_object_bad_type(self, schema_with_array, object_with_array):
         object_with_array["my_test_array"] = "test"
         with pytest.raises(ValueError):

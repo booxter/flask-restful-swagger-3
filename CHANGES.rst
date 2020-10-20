@@ -1,3 +1,12 @@
+Version 0.3.6
+-------------
+
+Released 2020-10-20
+
+-  Fix example of schema
+-  Update tests
+
+
 Version 0.3.5
 -------------
 
