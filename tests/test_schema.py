@@ -45,10 +45,16 @@ class TestSchema:
         sub_schema(**obj_of_sub_schema)
 
     def test_should_valdate_definitions_of_sub_schema(self, sub_schema, expected_definition_of_sub_schema):
-        assert sub_schema.definitions() == expected_definition_of_sub_schema
+        assert sub_schema.definitions()['properties'] == expected_definition_of_sub_schema['properties']
+        for required in sub_schema.definitions()['required']:
+            assert required in expected_definition_of_sub_schema['required']
 
     def test_should_valdate_example_of_sub_schema(self, sub_schema, expected_example_of_sub_schema):
         assert sub_schema.example() == expected_example_of_sub_schema
+
+    def test_should_valdate_example_of_sub_schema_empty(self, sub_schema_empty, expected_example_of_sub_schema):
+        del expected_example_of_sub_schema['sub_attribute']
+        assert sub_schema_empty.example() == expected_example_of_sub_schema
 
     def test_should_raise_error_when_create_sub_schema_with_different_type(
             self, bad_sub_schema):

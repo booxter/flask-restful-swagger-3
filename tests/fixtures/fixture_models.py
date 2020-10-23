@@ -235,8 +235,16 @@ class SubSchema(SuperSchema):
     required = ['sub_attribute']
 
 
+class SubSchemaEmpty(SuperSchema):
+    pass
+
+
 def fixture_sub_schema():
     return SubSchema
+
+
+def fixture_sub_schema_empty():
+    return SubSchemaEmpty
 
 
 def fixture_bad_sub_schema():

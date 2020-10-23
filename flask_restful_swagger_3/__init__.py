@@ -466,6 +466,9 @@ class Schema(dict):
             register_schema(cls)
         super().__init_subclass__(**kwargs)
         super_classes = cls.get_super_classes(cls)
+        properties = {}
+        if cls.properties:
+            properties.update(deepcopy(cls.properties))
         for super_class in super_classes:
             if not hasattr(super_class, 'type'):
                 raise TypeError("You can inherit only schema of type 'object'")
@@ -474,13 +477,19 @@ class Schema(dict):
             if cls.type != super_class.type:
                 raise TypeError(f"You can't add type to '{cls.__name__}'" +
                                 f"because it inherits of type of '{super_class.__name__}'")
+
+            cls.type = super_class.type
+
             if super_class.properties:
-                if cls.properties:
-                    cls.properties.update(deepcopy(super_class.properties))
+                properties.update(deepcopy(super_class.properties))
 
             if hasattr(super_class, 'required'):
                 if hasattr(cls, 'required'):
-                    cls.required += super_class.required
+                    cls.required = list(set(cls.required + super_class.required))
+                else:
+                    cls.required = super_class.required
+
+        cls.properties = properties
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
