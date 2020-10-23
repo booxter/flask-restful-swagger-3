@@ -1,3 +1,12 @@
+Version 0.3.7
+-------------
+
+Released 2020-10-23
+
+-  Fix merge properties between SuperSchema and SubSchema
+-  Update tests
+
+
 Version 0.3.6
 -------------
 
