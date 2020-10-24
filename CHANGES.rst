@@ -1,3 +1,12 @@
+Version 0.3.9
+-------------
+
+Released 2020-10-25
+
+-  Add default and choices to parser when using parameter decorator
+-  Update tests
+
+
 Version 0.3.8
 -------------
 

@@ -12,7 +12,7 @@ known_users = []
 @swagger.tags('User')
 class UserResource(Resource):
     @swagger.reorder_with(UserModel, response_code=200)
-    @swagger.parameters([{'in':'query', 'name':'body', 'description':'Request body', 'schema':UserModel, 'required': 'true'}])
+    @swagger.parameters([{'in': 'query', 'name': 'body', 'description': 'Request body', 'schema': UserModel, 'required': 'true'}])
     def post(self, _parser):
         """Adds a user."""
         # Validate request body with schema model
@@ -28,8 +28,9 @@ class UserResource(Resource):
         return data, 201, {'Location': request.path + '/' + str(data['id'])}
 
     @swagger.reorder_with(UserModel, response_code=200)
-    @swagger.parameters(
-        [{'in': 'query', 'name': 'body', 'description': 'Request body', 'schema': {'type': 'string'}, 'required': 'true'}])
+    @swagger.parameter(_in='query', name='body', description='Request body',
+                       schema={'type': 'string', 'default': 'something'},
+                       required=True)
     def get(self, _parser):
         """Returns all users."""
         # swagger.doc decorator returns a query parameter parser in the special
