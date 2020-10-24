@@ -64,3 +64,9 @@ class ProductSchema(Schema):
         "category": CategorySchema,
     }
     required = ["name", "unit_price", "quantity", "category"]
+
+
+class TypeSchema(Schema):
+    type = "string"
+    default = "admin"
+    enum = ["admin", "regular"]

@@ -1,3 +1,12 @@
+Version 0.4.0
+-------------
+
+Released 2020-10-25
+
+-  Add schema of parameters in swagger component if is subclass of Schema
+-  Update tests
+
+
 Version 0.3.9
 -------------
 

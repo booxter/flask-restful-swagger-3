@@ -100,19 +100,19 @@ class Api(restful_Api):
                     len(response_code_list) == len(description_list) == len(model_list) == len(no_content_list)
                 )
 
-                # if reqparser and params:
-                #     raise ValidationError("parameters and reqparser can't be in same spec")
-
                 if reqparser and request_body:
                     raise ValidationError("requestBody and reqparser can't be in same spec")
 
                 if reqparser:
                     request_body, _params = RequestParserExtractor(reqparser).extract()
                     params += _params
-                    # if _params:
-                    #     params += _params
 
                 result_model = [self.__build_model(model) for model in model_list]
+
+                for param in params:
+                    if "schema" in param:
+                        if type(param["schema"]) is type and param["schema"].__name__ in REGISTRY_SCHEMA:
+                            result_model.append(self.__build_model(param["schema"]))
 
                 for result in result_model:
                     if result:
