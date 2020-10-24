@@ -30,7 +30,8 @@ class UserModel(SuperUserModel):
         'keys': KeysModel.array(),
         'user_type': {
             'type': 'string',
-            'enum': ['admin', 'regular']
+            'enum': ['admin', 'regular'],
+            'nullable': 'true'
         }
     }
     required = ['name']
@@ -56,7 +57,7 @@ class ProductSchema(Schema):
     properties = {
         "id": {"type": "string"},
         "name": {"type": "string"},
-        "picture": {"type": "string"},
+        "picture": {"type": "string", "nullable": "true"},
         "unit_price": {"type": "number"},
         "unit": {"type": "string"},
         "quantity": {"type": "number"},
