@@ -3,7 +3,7 @@ from flask_restful.reqparse import RequestParser
 
 from flask_restful_swagger_3 import swagger, Resource
 
-from models import UserModel, ErrorModel, ProductSchema
+from models import UserModel, ErrorModel, ProductSchema, TypeSchema
 
 
 known_users = []
@@ -30,6 +30,9 @@ class UserResource(Resource):
     @swagger.reorder_with(UserModel, response_code=200)
     @swagger.parameter(_in='query', name='body', description='Request body',
                        schema={'type': 'string', 'default': 'something'},
+                       required=True)
+    @swagger.parameter(_in='query', name='user_type', description='type uer',
+                       schema=TypeSchema,
                        required=True)
     def get(self, _parser):
         """Returns all users."""
