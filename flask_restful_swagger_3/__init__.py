@@ -489,7 +489,8 @@ class Schema(dict):
                 else:
                     cls.required = super_class.required
 
-        cls.properties = properties
+        if properties:
+            cls.properties = properties
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -505,6 +506,16 @@ class Schema(dict):
                     prop = self.properties[k].definitions()
                 else:
                     prop = self.properties[k]
+
+                nullable = False
+                if 'nullable' in prop:
+                    if prop['nullable'] not in ['true', 'false']:
+                        raise ValueError('\'nullable\' must be \'true\' or \'false\'')
+                    if prop['nullable'] == 'true':
+                        nullable = True
+
+                if nullable and v is None:
+                    continue
 
                 type_ = None
                 if 'type' in prop:

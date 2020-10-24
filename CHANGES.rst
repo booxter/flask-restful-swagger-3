@@ -1,3 +1,12 @@
+Version 0.3.8
+-------------
+
+Released 2020-10-24
+
+-  Allow null item in Schema
+-  Update tests
+
+
 Version 0.3.7
 -------------
 

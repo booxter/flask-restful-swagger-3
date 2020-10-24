@@ -270,20 +270,32 @@ def fixture_sub_schema_with_super_schema_without_type():
 
 def fixture_schema_with_array():
     class ArraySchema(Schema):
-        type = "object"
+        type = 'object'
         properties = {
-            "id": {"type": "integer"},
-            "prop1": {"type": "string"},
-            "prop2": {"type": "string"}
+            'id': {'type': 'integer'},
+            'prop1': {'type': 'string'},
+            'prop2': {'type': 'string'}
         }
-        required = ["prop1"]
+        required = ['prop1']
 
     class TestSchema(Schema):
-        type = "object"
+        type = 'object'
         properties = {
-            "id": {"type": "integer"},
-            "name": {"type": "string"},
-            "my_test_array": ArraySchema.array()
+            'id': {'type': 'integer'},
+            'name': {'type': 'string'},
+            'my_test_array': ArraySchema.array()
         }
 
     return TestSchema
+
+
+def fixture_nullable_schema():
+    class NullableSchema(Schema):
+        type = 'object'
+        properties = {
+            'nullable_str': {'type': 'string', 'nullable': 'true'},
+            'nullable_int': {'type': 'integer', 'nullable': 'true'}
+        }
+        required = ['nullable_str', 'nullable_int']
+
+    return NullableSchema

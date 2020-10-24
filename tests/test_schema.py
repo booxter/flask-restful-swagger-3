@@ -109,7 +109,7 @@ class TestSchema:
         }
         pmodel(**object_with_string_array)
 
-    def test_should_raise_error_when_array_has_all_bad_type_ok(self, pmodel):
+    def test_should_raise_error_when_array_has_all_bad_type(self, pmodel):
         object_with_string_array = {
             "name": "test",
             "keys": [1, 2]
@@ -117,10 +117,25 @@ class TestSchema:
         with pytest.raises(ValueError):
             pmodel(**object_with_string_array)
 
-    def test_should_raise_error_when_array_has_some_bad_type_ok(self, pmodel):
+    def test_should_raise_error_when_array_has_some_bad_type(self, pmodel):
         object_with_string_array = {
             "name": "test",
             "keys": ["keys1", 2]
         }
         with pytest.raises(ValueError):
             pmodel(**object_with_string_array)
+
+    def test_should_validate_nullable_schema_ok(self, nullable_schema):
+        nullable_object = {
+            "nullable_str": None,
+            "nullable_int": None
+        }
+        nullable_schema(**nullable_object)
+
+    def test_should_raise_error_when_nullable_schema_are_not_null_and_bad_type(self, nullable_schema):
+        nullable_object = {
+            "nullable_str": 1,
+            "nullable_int": "other"
+        }
+        with pytest.raises(ValueError):
+            nullable_schema(**nullable_object)
