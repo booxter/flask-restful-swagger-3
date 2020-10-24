@@ -299,3 +299,15 @@ def fixture_nullable_schema():
         required = ['nullable_str', 'nullable_int']
 
     return NullableSchema
+
+
+def fixture_bad_nullable_schema():
+    class NullableSchema(Schema):
+        type = 'object'
+        properties = {
+            'nullable_str': {'type': 'string', 'nullable': 'other'},
+            'nullable_int': {'type': 'integer', 'nullable': 'true'}
+        }
+        required = ['nullable_str', 'nullable_int']
+
+    return NullableSchema

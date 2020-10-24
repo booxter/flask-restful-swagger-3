@@ -139,3 +139,11 @@ class TestSchema:
         }
         with pytest.raises(ValueError):
             nullable_schema(**nullable_object)
+
+    def test_should_raise_error_when_nullable_is_set_incorrectly(self, bad_nullable_schema):
+        nullable_object = {
+            "nullable_str": None,
+            "nullable_int": None
+        }
+        with pytest.raises(ValueError):
+            bad_nullable_schema(**nullable_object)

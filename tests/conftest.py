@@ -10,7 +10,7 @@ from tests.fixtures.fixture_models import (
     fixture_enum_schema_set, fixture_enum_schema_tuple,
     fixture_bad_enum_schema, fixture_bad_enum_schema_type, fixture_sub_schema, fixture_bad_sub_schema,
     fixture_sub_schema_with_bad_super_schema, fixture_sub_schema_with_super_schema_without_type,
-    fixture_schema_with_array, fixture_sub_schema_empty, fixture_nullable_schema)
+    fixture_schema_with_array, fixture_sub_schema_empty, fixture_nullable_schema, fixture_bad_nullable_schema)
 
 
 # Schemas
@@ -96,6 +96,11 @@ def schema_with_array():
 @pytest.fixture
 def nullable_schema():
     return fixture_nullable_schema()
+
+
+@pytest.fixture
+def bad_nullable_schema():
+    return fixture_bad_nullable_schema()
 
 
 # Objects
