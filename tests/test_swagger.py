@@ -56,10 +56,75 @@ class TestSwagger:
             'help': 'Name to filter by',
             'required': False,
             'default': None,
+            'choices': (),
             'action': 'store'
         })
 
         assert swagger.get_parser_arg(param) == expected
+
+    def test_should_get_parser_arg_with_default(self):
+        param = {
+            'name': 'name',
+            'description': 'Name to filter by',
+            'schema': {
+                'type': 'string',
+                'default': 'something'
+            },
+            'in': 'query'
+        }
+
+        expected = ('name', {
+            'dest': 'name',
+            'type': str,
+            'location': 'args',
+            'help': 'Name to filter by',
+            'required': False,
+            'default': 'something',
+            'choices': (),
+            'action': 'store'
+        })
+
+        assert swagger.get_parser_arg(param) == expected
+
+    def test_should_get_parser_arg_with_choices(self):
+        param = {
+            'name': 'name',
+            'description': 'Name to filter by',
+            'schema': {
+                'type': 'string',
+                'default': 'something',
+                'enum': ['first', 'second']
+            },
+            'in': 'query'
+        }
+
+        expected = ('name', {
+            'dest': 'name',
+            'type': str,
+            'location': 'args',
+            'help': 'Name to filter by',
+            'required': False,
+            'default': 'something',
+            'choices': ('first', 'second'),
+            'action': 'store'
+        })
+
+        assert swagger.get_parser_arg(param) == expected
+
+    def test_get_parser_arg_should_raises_error_when_enum_not_list_set_or_tuple(self):
+        param = {
+            'name': 'name',
+            'description': 'Name to filter by',
+            'schema': {
+                'type': 'string',
+                'default': 'something',
+                'enum': "first, second"
+            },
+            'in': 'query'
+        }
+
+        with pytest.raises(TypeError):
+            swagger.get_parser_arg(param)
 
     def test_should_get_parser_args(self):
         params = [
@@ -86,6 +151,7 @@ class TestSwagger:
             'help': 'Name to filter by',
             'required': False,
             'default': None,
+            'choices': (),
             'action': 'store'
         })]
 
@@ -119,6 +185,7 @@ class TestSwagger:
             'help': 'Name to filter by',
             'required': False,
             'default': None,
+            'choices': (),
             'action': 'append'
         })]
 

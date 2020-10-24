@@ -6,7 +6,6 @@ from functools import wraps
 from flask import request
 from flask_restful import Resource, reqparse, inputs
 
-
 REGISTRY_SCHEMA = {}
 
 
@@ -215,6 +214,11 @@ def get_parser_from_schema(ref):
                 default = properties[prop].get('default', None)
             except TypeError:
                 default = properties[prop].__dict__.get('default', None)
+
+            try:
+                choices = properties[prop].get('enum', ())
+            except TypeError:
+                choices = properties[prop].__dict__.get('enum', ())
             name = prop
             second_part = {
                 'dest': prop,
@@ -223,6 +227,7 @@ def get_parser_from_schema(ref):
                 'help': _help,
                 'required': prop in required,
                 'default': default,
+                'choices': tuple(choices),
                 'action': get_data_action(properties[prop])
             }
             yield name, second_part
@@ -239,6 +244,16 @@ def get_parser_arg(param):
             list_obj = [(name, sec) for name, sec in get_parser_from_schema(param['schema']['$ref'])]
             return list_obj
 
+    default = None
+    choices = ()
+    if 'schema' in param:
+        if 'default' in param['schema']:
+            default = param['schema']['default']
+        if 'enum' in param['schema']:
+            if type(param['schema']['enum']) not in [set, list, tuple]:
+                raise TypeError(f"'enum' must be 'list', 'set' or 'tuple', but was {type(param['schema']['enum'])}")
+            choices = tuple(param['schema']['enum'])
+
     obj = (
         param['name'],
         {
@@ -247,7 +262,8 @@ def get_parser_arg(param):
             'location': 'args',
             'help': param.get('description', None),
             'required': param.get('required', False),
-            'default': param.get('default', None),
+            'default': default,
+            'choices': choices,
             'action': get_data_action(param['schema'])
         })
     return obj
