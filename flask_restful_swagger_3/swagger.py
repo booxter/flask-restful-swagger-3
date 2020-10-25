@@ -190,7 +190,8 @@ def get_data_action(param):
     return None
 
 
-def get_parser_from_schema(ref):
+def get_parser_from_schema(param):
+    ref = param['schema']['$ref']
     if type(ref) == str:
         _schema = ref.split('/')[-1]
     else:
@@ -202,6 +203,10 @@ def get_parser_from_schema(ref):
     _type = definitions_schema.__dict__.get('type', None)
     properties = definitions_schema.__dict__.get('properties', None)
     required = definitions_schema.__dict__.get('required', [])
+
+    _help = param.get('description', None)
+    default = definitions_schema.__dict__.get('default', None)
+    choices = definitions_schema.__dict__.get('enum', ())
 
     if _type == 'object':
         for prop in properties:
@@ -232,6 +237,20 @@ def get_parser_from_schema(ref):
             }
             yield name, second_part
 
+    else:
+        name = param['name']
+        second_part = {
+            'dest': name,
+            'type': get_data_type({'type': _type}),
+            'location': 'args',
+            'help': _help,
+            'required': param.get('required', False),
+            'default': default,
+            'choices': tuple(choices),
+            'action': get_data_action({'type': _type})
+        }
+        yield name, second_part
+
 
 def get_parser_arg(param):
     """
@@ -241,7 +260,7 @@ def get_parser_arg(param):
     """
     if 'schema' in param:
         if '$ref' in param['schema']:
-            list_obj = [(name, sec) for name, sec in get_parser_from_schema(param['schema']['$ref'])]
+            list_obj = [(name, sec) for name, sec in get_parser_from_schema(param)]
             return list_obj
 
     default = None

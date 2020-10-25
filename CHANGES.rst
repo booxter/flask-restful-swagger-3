@@ -1,3 +1,12 @@
+Version 0.4.1
+-------------
+
+Released 2020-10-25
+
+-  Fix parser when schema is not type 'object'
+-  Update tests
+
+
 Version 0.4.0
 -------------
 

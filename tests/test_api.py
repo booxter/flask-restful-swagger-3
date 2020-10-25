@@ -46,6 +46,27 @@ class TestApi(BaseTestapi):
         assert not data['bool']
         assert data['int'] == 123
         assert data['float'] == 1.23
+        assert data['parsing'] == "testing"
+
+    def test_parse_query_parameters_with_parsing_schema(self):
+        r = self.client_app.get('/parse?str=Test' +
+                                '&date=2016-01-01' +
+                                '&datetime=2016-01-01T12:00:00%2B00:00' +
+                                '&bool=False' +
+                                '&int=123' +
+                                '&float=1.23' +
+                                '&parsing=some%20data')
+
+        assert r.status_code == 200
+
+        data = json.loads(r.data.decode())
+        assert data['str'] == 'Test'
+        assert data['date'] == '2016-01-01T00:00:00'
+        assert data['datetime'] == '2016-01-01T12:00:00+00:00'
+        assert not data['bool']
+        assert data['int'] == 123
+        assert data['float'] == 1.23
+        assert data['parsing'] == "some data"
 
     def test_get_user(self):
         # Retrieve user

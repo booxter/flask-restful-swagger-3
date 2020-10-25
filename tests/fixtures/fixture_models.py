@@ -6,6 +6,11 @@ class EmailModel(Schema):
     format = 'email'
 
 
+class ModelToParse(Schema):
+    type = 'string'
+    default = 'testing'
+
+
 class KeysModel(Schema):
     type = 'string'
 

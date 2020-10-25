@@ -1,7 +1,7 @@
 from flask import request
 from flask_restful.reqparse import RequestParser
 from flask_restful_swagger_3 import Resource, swagger
-from tests.fixtures.fixture_models import UserModel, PModel
+from tests.fixtures.fixture_models import UserModel, PModel, ModelToParse
 
 
 parse_resource_params = [
@@ -55,12 +55,18 @@ parse_resource_params = [
                     'type': 'number',
                     'format': 'float'
                 }
+            },
+            {
+                'name': 'parsing',
+                'description': 'Parsing model',
+                'in': 'query',
+                'schema': ModelToParse
             }
         ]
 
 
 class ParseResource(Resource):
-    @swagger.response(200, description="Quries values")
+    @swagger.response(200, description="Queries values")
     @swagger.parameters(parse_resource_params)
     def get(self, _parser):
         """
@@ -75,7 +81,8 @@ class ParseResource(Resource):
                    'datetime': args.datetime.isoformat(),
                    'bool': args.bool,
                    'int': args.int,
-                   'float': args.float
+                   'float': args.float,
+                   'parsing': args.parsing
                }, 200
 
 
@@ -165,7 +172,6 @@ class PResource(Resource):
         args = _parser.parse_args()
         try:
             data = PModel(**args)
-            print(data)
         except ValueError as e:
             return {'message': e.args[0]}, 400
 
