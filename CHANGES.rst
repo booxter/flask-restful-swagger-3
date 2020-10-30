@@ -1,3 +1,12 @@
+Version 0.4.2
+-------------
+
+Released 2020-10-31
+
+-  Schema now validate value depending of format
+-  Update tests
+
+
 Version 0.4.1
 -------------
 

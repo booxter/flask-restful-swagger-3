@@ -13,6 +13,8 @@ from flask_restful_swagger_3.swagger import (ValidationError, create_open_api_re
                                              extract_swagger_path, _auth as auth,
                                              slash_join, TypeSwagger, REGISTRY_SCHEMA)
 
+from flask_restful_swagger_3.swagger_format import get_validate_format
+
 
 def abort(http_status_code, schema=None, **kwargs):
     if schema:
@@ -517,16 +519,15 @@ class Schema(dict):
                 if nullable and v is None:
                     continue
 
-                type_ = None
-                if 'type' in prop:
-                    type_ = prop['type']
-                self.check_type(type_, k, v)
+                type_ = prop.get('type', None)
+                format_ = prop.get('format', None)
+                self.check_type(type_, format_, k, v)
 
                 if 'enum' in prop:
                     if type(prop['enum']) not in [set, list, tuple]:
                         raise TypeError(f"'enum' is must be 'list', 'set' or 'tuple', but was {type(prop['enum'])}")
                     for item in list(prop['enum']):
-                        self.check_enum_type(type_, item)
+                        self.check_enum_type(type_, format_, item)
                     if v not in prop['enum']:
                         raise ValueError(f"{k} must have {' or '.join(prop['enum'])} but have {v}")
                 self[k] = v
@@ -543,7 +544,7 @@ class Schema(dict):
             if schema_name != cls.__name__ and issubclass(cls, schema)
         ]
 
-    def check_type(self, type_, key, value):
+    def check_type(self, type_, format_, key, value):
         if type_:
             if type_ == 'array':
                 if not isinstance(value, list):
@@ -554,7 +555,7 @@ class Schema(dict):
                         for v in value:
                             cls(**v)
                     else:
-                        self.check_array_type(cls.type, key, value)
+                        self.check_array_type(cls.type, format_,  key, value)
             if type_ == 'integer' and not isinstance(value, int):
                 raise ValueError(f'The attribute "{key}" must be an int, but was "{type(value)}"')
             if type_ == 'number' and not isinstance(value, int) and not isinstance(value, float):
@@ -564,9 +565,9 @@ class Schema(dict):
                 raise ValueError(f'The attribute "{key}" must be a string, but was "{type(value)}"')
             if type_ == 'boolean' and not isinstance(value, bool):
                 raise ValueError(f'The attribute "{key}" must be an int, but was "{type(value)}"')
+            self.check_format(type_, format_, value)
 
-    @staticmethod
-    def check_array_type(type_, key, value):
+    def check_array_type(self, type_, format_, key, value):
         if type_:
             if type_ == 'integer' and not all([isinstance(v, int) for v in value]):
                 raise ValueError(f'The list "{key}" must have all items of type int')
@@ -577,9 +578,9 @@ class Schema(dict):
                 raise ValueError(f'The list "{key}" must have all items of type string')
             if type_ == 'boolean' and not all([isinstance(v, bool) for v in value]):
                 raise ValueError(f'The list "{key}" must have all items of type string')
+            self.check_format(type_, format_, value)
 
-    @staticmethod
-    def check_enum_type(type_, value):
+    def check_enum_type(self, type_, format_, value):
         if type_:
             if type_ == 'integer' and not isinstance(value, int):
                 raise ValueError(f'The enum "{value}" must be an int, but was "{type(value)}"')
@@ -590,6 +591,13 @@ class Schema(dict):
                 raise ValueError(f'The enum "{value}" must be a string, but was "{type(value)}"')
             if type_ == 'boolean' and not isinstance(value, bool):
                 raise ValueError(f'The enum "{value}" must be an int, but was "{type(value)}"')
+            self.check_format(type_, format_, value)
+
+    @staticmethod
+    def check_format(type_, format_, value):
+        validator = get_validate_format(type_, format_)
+        if validator:
+            validator().validate(value)
 
     @classmethod
     def reference(cls):
