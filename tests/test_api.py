@@ -1,12 +1,11 @@
 import json
 import pytest
 from flask import Blueprint
-from tests.base_test import BaseTest, BaseTestapi
-from tests.fixtures.fixture_resources import BadFormatResourceReqbodyReqparser, BadFormatUrl, UserResource
-from flask_restful_swagger_3 import swagger, get_swagger_blueprint, Api
+from tests.base_test import BaseTest, BaseTestApi, NotAuthorizeApi, BaseTestApiBlueprint
+from flask_restful_swagger_3 import swagger, get_swagger_blueprint, Api, Resource
 
 
-class TestApi(BaseTestapi):
+class TestApi(BaseTestApi):
 
     def test_get_spec_object(self):
         # Retrieve spec object
@@ -83,16 +82,65 @@ class TestApi(BaseTestapi):
         data = json.loads(r.data.decode())
         assert 'content' not in data['paths']['/users/{user_id}']['delete']['responses']['204']
 
-    def test_resource_reqbody_reqparser_should_not_validate(self):
+    def test_resource_reqbody_reqparser_should_not_validate(self, bad_format_resource):
         with pytest.raises(swagger.ValidationError):
-            self.api.add_resource(BadFormatResourceReqbodyReqparser, '/bad_resource')
+            self.api.add_resource(bad_format_resource, '/bad_resource')
 
-    def test_bad_url_format(self):
-        with pytest.raises(ValueError):
-            self.api.add_resource(BadFormatUrl, 'bad_url')
+    def test_bad_url_format(self, bad_format_url):
+        with pytest.raises(swagger.ValidationError) as e:
+            self.api.add_resource(bad_format_url, '/bad_url/')
 
-        with pytest.raises(ValueError):
-            self.api.add_resource(BadFormatUrl, 'bad_url/')
+        assert str(e.value) == "paths must not have ending slash"
+
+    def test_two_much_converter_in_url(self, bad_format_url):
+        with pytest.raises(ValueError) as e:
+            self.api.add_resource(bad_format_url, '/bad_url/<string:email:test>')
+
+        assert str(e.value) == "You must define one converter for a variable_name," \
+                               " if you want several converter don't mention any 'string:email:test'"
+
+    def test_no_converter_in_url(self, no_converter_resource):
+        self.api.add_resource(no_converter_resource, '/no_converter/<id>')
+
+    def test_bad_schema_resource_in_parameters(self, bad_schema_resource_in_parameters):
+        with pytest.raises(swagger.ValidationError) as e:
+            self.api.add_resource(bad_schema_resource_in_parameters, '/url')
+
+        assert str(e.value) == "'schema' must be of type 'dict' or subclass of 'Schema', not <class 'str'>"
+
+    def test_bad_schema_resource(self):
+        class BadSchema:
+            pass
+
+        class SomeResource(Resource):
+            @swagger.reorder_with(BadSchema, description="fake")
+            def get(self):
+                pass
+
+        with pytest.raises(TypeError) as e:
+            self.api.add_resource(SomeResource, '/url')
+
+        assert str(e.value) == "'schema' used with 'reorder_with' must be a sub class of Schema"
+
+        class SomeResource(Resource):
+            @swagger.reorder_with({'id': {'type': 'int'}}, description="fake")
+            def get(self):
+                pass
+
+        with pytest.raises(TypeError) as e:
+            self.api.add_resource(SomeResource, '/url')
+
+        assert str(e.value) == "'schema' used with 'reorder_with' must be a sub class of Schema"
+
+    def test_expected_with_none(self):
+
+        class SomeResource(Resource):
+            @swagger.response(response_code=201, description="create something")
+            @swagger.expected(None)
+            def post(self):
+                return None
+
+        self.api.add_resource(SomeResource, '/url')
 
     def test_get_swagger_blueprint(self):
         swagger_blueprint = get_swagger_blueprint(self.api.open_api_json, swagger_blueprint_name="swagger_app")
@@ -148,7 +196,7 @@ class TestApi(BaseTestapi):
         assert data == expected
 
 
-class TestFlaskSwaggerRequestParser(BaseTestapi):
+class TestFlaskSwaggerRequestParser(BaseTestApi):
 
     def test_request_parser_spec_definitions(self):
         # Retrieve spec
@@ -197,10 +245,11 @@ class TestFlaskSwaggerRequestParser(BaseTestapi):
 
 
 class TestBlueprint(BaseTest):
-    def setup_method(self):
-        self.blueprint = Blueprint('user', __name__)
-        self.api = Api(self.blueprint, '/test', add_api_spec_resource=False)
-        self.api.add_resource(UserResource, '/users')
+    @pytest.fixture(autouse=True)
+    def init_blueprint(self, user_resource):
+        self.blueprint = Blueprint('other', __name__)
+        self.api = Api(self.blueprint, add_api_spec_resource=False)
+        self.api.add_resource(user_resource, '/users')
 
     def test_get_spec_object(self):
         # Retrieve spec object
@@ -262,3 +311,91 @@ class TestBlueprint(BaseTest):
         assert spec['openapi'] == '3.0.2'
         assert 'info' in spec
         assert 'paths' in spec
+
+    def test_bad_blueprint_url(self, user_resource):
+        self.blueprint = Blueprint('user', __name__, url_prefix="test")
+        self.api = Api(self.blueprint, add_api_spec_resource=False)
+
+        with pytest.raises(swagger.ValidationError) as e:
+            self.api.add_resource(user_resource, '/users')
+
+        assert str(e.value) == "url_prefix must start with a leading slash"
+
+        self.blueprint = Blueprint('user', __name__, url_prefix="/test/")
+        self.api = Api(self.blueprint, add_api_spec_resource=False)
+
+        with pytest.raises(swagger.ValidationError) as e:
+            self.api.add_resource(user_resource, '/users')
+
+        assert str(e.value) == "url_prefix must not have ending slash"
+
+
+class TestBlueprintWithUrlPrefix(BaseTestApiBlueprint):
+    def test_blueprint_url(self):
+        swagger_blueprint = get_swagger_blueprint(self.api.open_api_json)
+        self.app.register_blueprint(swagger_blueprint)
+        swagger_ui_result = self.client_app.get('/')
+        assert swagger_ui_result.status_code == 200
+
+        swagger_bundle = self.client_app.get('/swagger-ui-bundle.js')
+        assert swagger_bundle.status_code == 200
+
+        swagger_standalone = self.client_app.get('/swagger-ui-standalone-preset.js')
+        assert swagger_standalone.status_code == 200
+
+        swagger_css = self.client_app.get('/swagger-ui.css')
+        assert swagger_css.status_code == 200
+
+        spec_result = self.client_app.get('/api/doc/swagger.json')
+        assert spec_result.status_code == 200
+        spec = json.loads(spec_result.data.decode())
+        assert spec['openapi'] == '3.0.2'
+        assert 'info' in spec
+        assert 'paths' in spec
+        assert '/api/users/{user_id}' in spec['paths']
+
+        r = self.client_app.get('/api/users/1?name=test')
+        assert r.status_code == 200
+        data = json.loads(r.data.decode())
+        assert data == {'id': 1, 'name': 'test'}
+
+
+class TestNoAuthorizeApi(NotAuthorizeApi):
+
+    def test_get_spec_object(self):
+        # Retrieve spec object
+        spec = self.api.open_api_json
+        assert "info" in spec
+        assert "title" in spec["info"]
+        assert spec["info"]["title"] == "Example"
+        assert 'paths' in spec
+        assert 'parameters' in spec['paths']['/parse']['get']
+        assert spec['openapi'] == '3.0.2'
+
+    def test_get_spec(self):
+        # Retrieve spec
+        r = self.client_app.get('api/doc/swagger.json')
+        assert r.status_code == 200
+
+        data = json.loads(r.data.decode())
+        assert 'info' in data
+        assert 'paths' in data
+        assert data['openapi'] == '3.0.2'
+        assert data['paths'] == {}
+
+    def test_parse_query_parameters(self):
+        r = self.client_app.get('/parse?str=Test' +
+                             '&date=2016-01-01' +
+                             '&datetime=2016-01-01T12:00:00%2B00:00' +
+                             '&bool=False' +
+                             '&int=123' +
+                             '&float=1.23')
+
+        assert r.status_code == 401
+
+        data = json.loads(r.data.decode())
+        assert data == {
+            'message': "The server could not verify that you are authorized to access the URL requested. " +
+            "You either supplied the wrong credentials (e.g. a bad password), " +
+            "or your browser doesn't understand how to supply the credentials required."
+        }

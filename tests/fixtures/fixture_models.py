@@ -1,271 +1,300 @@
 from flask_restful_swagger_3 import Schema
 
 
-class EmailModel(Schema):
-    type = 'string'
-    format = 'email'
+def email_model():
+    class EmailModel(Schema):
+        type = 'string'
+        format = 'email'
+
+    return EmailModel
 
 
-class ModelToParse(Schema):
-    type = 'string'
-    default = 'testing'
+def model_to_parse():
+    class ModelToParse(Schema):
+        type = 'string'
+        default = 'testing'
+
+    return ModelToParse
 
 
-class KeysModel(Schema):
-    type = 'string'
+def keys_model():
+    class KeysModel(Schema):
+        type = 'string'
+
+    return KeysModel
 
 
-class PModel(Schema):
-    type = 'object'
-    properties = {
-        'id': {
-            'type': 'integer',
-            'format': 'int64',
-        },
-        'name': {
-            'type': 'string'
-        },
-        'mail': EmailModel,
-        'keys': KeysModel.array()
-    }
-    required = ['name', 'keys']
+def p_model():
+    class PModel(Schema):
+        type = 'object'
+        properties = {
+            'id': {
+                'type': 'integer',
+                'format': 'int64',
+            },
+            'name': {
+                'type': 'string'
+            },
+            'mail': email_model(),
+            'keys': keys_model().array()
+        }
+        required = ['name', 'keys']
 
-
-def fixture_pmodel():
     return PModel
 
 
-class UserModel(Schema):
-    type = 'object'
-    properties = {
-        'id': {
-            'type': 'integer',
-            'format': 'int64',
-        },
-        'name': {
-            'type': 'string'
+def user_model():
+    class UserModel(Schema):
+        type = 'object'
+        properties = {
+            'id': {
+                'type': 'integer',
+                'format': 'int64',
+            },
+            'name': {
+                'type': 'string'
+            }
         }
-    }
-    required = ['name']
+        required = ['name']
 
-
-def fixture_user_model():
     return UserModel
 
 
-class SwaggerTestModel(Schema):
-    """
-    Test schema model.
-    """
-    type = 'object'
-    properties = {
-        'id': {
-            'type': 'string'
+def swagger_test_model():
+    class SwaggerTestModel(Schema):
+        """
+        Test schema model.
+        """
+        type = 'object'
+        properties = {
+            'id': {
+                'type': 'string'
+            }
         }
-    }
 
-
-def fixture_swagger_test_model():
     return SwaggerTestModel
 
 
-class SchemaTestModel(Schema):
-    """
-    Test schema model.
-    """
-    type = 'object'
-    properties = {
-        'id': {
-            'type': 'integer'
-        },
-        'name': {
-            'type': 'string'
+def schema_test_model():
+    class SchemaTestModel(Schema):
+        """
+        Test schema model.
+        """
+        type = 'object'
+        properties = {
+            'id': {
+                'type': 'integer'
+            },
+            'name': {
+                'type': 'string'
+            },
+            'number': {
+                'type': 'number'
+            },
+            'boolean': {
+                'type': 'boolean'
+            }
+
         }
-    }
-    required = ['id']
+        required = ['id']
 
-
-def fixture_schema_test_model():
     return SchemaTestModel
 
 
-class Property(Schema):
-    type = 'object'
-    properties = {
-        'property1': {
-            'type': 'string',
-        },
-        'property2': {
-            'type': 'string',
+
+def property_schema():
+    class Property(Schema):
+        type = 'object'
+        properties = {
+            'property1': {
+                'type': 'string',
+            },
+            'property2': {
+                'type': 'string',
+            }
         }
-    }
+
+    return Property
 
 
-class Category(Schema):
-    type = 'object'
-    properties = {
-        'id': {
-            'type': 'integer'
-        },
-        'name': {
-            'type': 'string'
-        },
-        'property': Property
-    }
-    required = ['id', 'name']
+def category_schema():
+    class Category(Schema):
+        type = 'object'
+        properties = {
+            'id': {
+                'type': 'integer'
+            },
+            'name': {
+                'type': 'string'
+            },
+            'property': property_schema()
+        }
+        required = ['id', 'name']
+
+    return Category
 
 
-class NestedSchema(Schema):
-    """
-    Test nested schema model.
-    """
-    type = 'object'
-    properties = {
-        'id': {
-            'type': 'integer'
-        },
-        'name': {
-            'type': 'string'
-        },
-        'category': Category,
-        'mail': EmailModel
-    }
-    required = ['id']
+def nested_schema():
+    class NestedSchema(Schema):
+        """
+        Test nested schema model.
+        """
+        type = 'object'
+        properties = {
+            'id': {
+                'type': 'integer'
+            },
+            'name': {
+                'type': 'string'
+            },
+            'category': category_schema(),
+            'mail': email_model()
+        }
+        required = ['id']
 
-
-def fixture_nested_schema():
     return NestedSchema
 
 
-class EnumSchema(Schema):
-    """
-    Test nested schema model.
-    """
-    type = 'object'
-    properties = {
-        'my_choice': {
-            'type': 'string',
-            'enum': ['choice_1', 'choice_2']
+def enum_schema():
+    class EnumSchema(Schema):
+        """
+        Test nested schema model.
+        """
+        type = 'object'
+        properties = {
+            'my_choice': {
+                'type': 'string',
+                'enum': ['choice_1', 'choice_2']
+            }
         }
-    }
 
-
-def fixture_enum_schema():
     return EnumSchema
 
 
-class EnumSchemaSet(Schema):
-    type = 'object'
-    properties = {
-        'my_choice': {
-            'type': 'string',
-            'enum': {'choice_1', 'choice_2'}
+def enum_schema_set():
+    class EnumSchemaSet(Schema):
+        type = 'object'
+        properties = {
+            'my_choice': {
+                'type': 'string',
+                'enum': {'choice_1', 'choice_2'}
+            }
         }
-    }
 
-
-def fixture_enum_schema_set():
     return EnumSchemaSet
 
 
-class EnumSchemaTuple(Schema):
-    type = 'object'
-    properties = {
-        'my_choice': {
-            'type': 'string',
-            'enum': ('choice_1', 'choice_2')
+def enum_schema_tuple():
+    class EnumSchemaTuple(Schema):
+        type = 'object'
+        properties = {
+            'my_choice': {
+                'type': 'string',
+                'enum': ('choice_1', 'choice_2')
+            }
         }
-    }
 
-
-def fixture_enum_schema_tuple():
     return EnumSchemaTuple
 
 
-class BadEnumSchema(Schema):
-    type = 'object'
-    properties = {
-        'my_choice': {
-            'type': 'string',
-            'enum': 'choice1'
+def bad_enum_schema():
+    class BadEnumSchema(Schema):
+        type = 'object'
+        properties = {
+            'my_choice': {
+                'type': 'string',
+                'enum': 'choice1'
+            }
         }
-    }
 
-
-def fixture_bad_enum_schema():
     return BadEnumSchema
 
 
-class BadEnumSchemaType(Schema):
-    type = 'object'
-    properties = {
-        'my_choice': {
-            'type': 'string',
-            'enum': ['choice1', 2]
+def bad_enum_schema_type():
+    class BadEnumSchemaType(Schema):
+        type = 'object'
+        properties = {
+            'my_choice': {
+                'type': 'string',
+                'enum': ['choice1', 2]
+            }
         }
-    }
 
-
-def fixture_bad_enum_schema_type():
     return BadEnumSchemaType
 
 
-class SuperSchema(Schema):
-    type = 'object'
-    properties = {
-        'id': {'type': 'string'},
-        'super_attribute': {'type': 'string'},
-        'other_attribute': {'type': 'string'}
-    }
-    required = ['other_attribute']
+def super_schema():
+    class SuperSchema(Schema):
+        type = 'object'
+        properties = {
+            'id': {'type': 'string'},
+            'super_attribute': {'type': 'string'},
+            'other_attribute': {'type': 'string'}
+        }
+        required = ['other_attribute']
+
+    return SuperSchema
 
 
-class BadSuperSchema(Schema):
-    type = 'string'
+def bad_super_schema():
+    class BadSuperSchema(Schema):
+        type = 'string'
+
+    return BadSuperSchema
 
 
-class SuperSchemaWithoutType(Schema):
-    properties = {
-        'id': {'type': 'string'},
-        'super_attribute': {'type': 'string'},
-        'other_attribute': {'type': 'string'}
-    }
-    required = ['other_attribute']
+def super_schema_without_type():
+    class SuperSchemaWithoutType(Schema):
+        properties = {
+            'id': {'type': 'string'},
+            'super_attribute': {'type': 'string'},
+            'other_attribute': {'type': 'string'}
+        }
+        required = ['other_attribute']
+
+    return SuperSchemaWithoutType
 
 
-class SubSchema(SuperSchema):
-    properties = {
-        'sub_attribute': {'type': 'string'}
-    }
-    required = ['sub_attribute']
+def sub_schema():
+    class SubSchema(super_schema()):
+        properties = {
+            'sub_attribute': {'type': 'string'}
+        }
+        required = ['sub_attribute']
 
-
-class SubSchemaEmpty(SuperSchema):
-    pass
-
-
-def fixture_sub_schema():
     return SubSchema
 
 
-def fixture_sub_schema_empty():
+def sub_schema_without_required():
+    class SubSchema(super_schema()):
+        properties = {
+            'sub_attribute': {'type': 'string'}
+        }
+
+    return SubSchema
+
+
+def sub_schema_empty():
+    class SubSchemaEmpty(super_schema()):
+        pass
+
     return SubSchemaEmpty
 
 
-def fixture_bad_sub_schema():
-    class BadSubSchema(SuperSchema):
+def bad_sub_schema():
+    class BadSubSchema(super_schema()):
         type = 'string'
     return BadSubSchema
 
 
-def fixture_sub_schema_with_bad_super_schema():
-    class SubSchemaWithBadSuperSchema(BadSuperSchema):
+def sub_schema_with_bad_super_schema():
+    class SubSchemaWithBadSuperSchema(bad_super_schema()):
         pass
     return SubSchemaWithBadSuperSchema
 
 
-def fixture_sub_schema_with_super_schema_without_type():
-    class SubSchemaWithSuperSchemaWithoutType(SuperSchemaWithoutType):
+def sub_schema_with_super_schema_without_type():
+    class SubSchemaWithSuperSchemaWithoutType(super_schema_without_type()):
         properties = {
             'sub_attribute': {'type': 'string'}
         }
@@ -273,7 +302,7 @@ def fixture_sub_schema_with_super_schema_without_type():
     return SubSchemaWithSuperSchemaWithoutType
 
 
-def fixture_schema_with_array():
+def schema_with_array():
     class ArraySchema(Schema):
         type = 'object'
         properties = {
@@ -294,7 +323,7 @@ def fixture_schema_with_array():
     return TestSchema
 
 
-def fixture_nullable_schema():
+def nullable_schema():
     class NullableSchema(Schema):
         type = 'object'
         properties = {
@@ -306,7 +335,7 @@ def fixture_nullable_schema():
     return NullableSchema
 
 
-def fixture_bad_nullable_schema():
+def bad_nullable_schema():
     class NullableSchema(Schema):
         type = 'object'
         properties = {

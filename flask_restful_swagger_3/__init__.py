@@ -8,7 +8,6 @@ from flask_restful import (Api as restful_Api, abort as flask_abort,
 
 from flask_restful_swagger_3.swagger import (ValidationError, create_open_api_resource,
                                              add_parameters, validate_path_item_object,
-                                             validate_operation_object,
                                              validate_components_object,
                                              extract_swagger_path, _auth as auth,
                                              slash_join, TypeSwagger, REGISTRY_SCHEMA)
@@ -102,11 +101,11 @@ class Api(restful_Api):
                     len(response_code_list) == len(description_list) == len(model_list) == len(no_content_list)
                 )
 
-                if reqparser and request_body:
-                    raise ValidationError("requestBody and reqparser can't be in same spec")
-
                 if reqparser:
-                    request_body, _params = RequestParserExtractor(reqparser).extract()
+                    parser_json_result, _params = RequestParserExtractor(reqparser).extract()
+                    if parser_json_result and request_body:
+                        raise ValidationError("requestBody and reqparser can't be in same spec")
+                    request_body = parser_json_result
                     params += _params
 
                 result_model = [self.__build_model(model) for model in model_list]
@@ -158,13 +157,13 @@ class Api(restful_Api):
                     )
 
                     for url in args:
-                        if not url.startswith('/'):
-                            raise ValidationError('paths must start with a /')
+                        if url.endswith('/'):
+                            raise ValidationError('paths must not have ending slash')
                         if self.blueprint and self.blueprint.url_prefix:
                             if not self.blueprint.url_prefix.startswith('/'):
-                                raise ValidationError('url_prefix must start with a /')
+                                raise ValidationError('url_prefix must start with a leading slash')
                             if self.blueprint.url_prefix.endswith('/'):
-                                raise ValidationError('url_prefix must not end with a /')
+                                raise ValidationError('url_prefix must not have ending slash')
                             url = self.blueprint.url_prefix + url
 
                         converted_url, parameters = self.__build_parameters(url, params)
@@ -176,7 +175,6 @@ class Api(restful_Api):
                             __method[method]["responses"].update(response)
                         else:
                             __method[method]["responses"] = response
-
                         validate_path_item_object(__method)
 
                         if converted_url in urls:
@@ -205,7 +203,12 @@ class Api(restful_Api):
     def __build_model(schema):
         if schema:
             is_list = type(schema) == list
-            schema_name = schema[0].__name__ if is_list else schema.__name__
+            try:
+                schema_name = schema[0].__name__ if is_list else schema.__name__
+                if schema_name not in REGISTRY_SCHEMA:
+                    raise TypeError("'schema' used with 'reorder_with' must be a sub class of Schema")
+            except AttributeError:
+                raise TypeError("'schema' used with 'reorder_with' must be a sub class of Schema")
 
             definition = schema[0].definitions() if is_list else schema.definitions()
             reference = schema[0].reference() if is_list else schema.reference()
@@ -313,10 +316,6 @@ class Api(restful_Api):
         return None, result
 
     @property
-    def blueprint_name(self):
-        return repr(super().__class__)
-
-    @property
     def open_api_json(self):
         return self.__open_api_object
 
@@ -386,8 +385,6 @@ class RequestParserExtractor:
             return type_.swagger_type
         elif callable(type_) and type_.__name__ == 'boolean':  # flask-restful boolean
             return 'boolean'
-        elif issubclass(type_, str):
-            return 'string'
         elif type_ == float:
             return 'float'
         elif type_ == int:
@@ -401,9 +398,9 @@ class RequestParserExtractor:
         elif type_ == dict:
             return 'object'
         try:
-            if type_ == long:
-                return 'long'
-        except NameError:
+            if issubclass(type_, str):
+                return 'string'
+        except TypeError:
             pass
         raise TypeError('unexpected type: {0}'.format(type_))
 
@@ -488,8 +485,6 @@ class Schema(dict):
             if hasattr(super_class, 'required'):
                 if hasattr(cls, 'required'):
                     cls.required = list(set(cls.required + super_class.required))
-                else:
-                    cls.required = super_class.required
 
         if properties:
             cls.properties = properties
@@ -521,15 +516,23 @@ class Schema(dict):
 
                 type_ = prop.get('type', None)
                 format_ = prop.get('format', None)
+                load_only = prop.pop('load_only', None)
                 self.check_type(type_, format_, k, v)
 
                 if 'enum' in prop:
                     if type(prop['enum']) not in [set, list, tuple]:
-                        raise TypeError(f"'enum' is must be 'list', 'set' or 'tuple', but was {type(prop['enum'])}")
+                        raise TypeError(f"'enum' must be 'list', 'set' or 'tuple', but was {type(prop['enum'])}")
                     for item in list(prop['enum']):
-                        self.check_enum_type(type_, format_, item)
+                        self.check_type(type_, format_, 'enum', item)
                     if v not in prop['enum']:
                         raise ValueError(f"{k} must have {' or '.join(prop['enum'])} but have {v}")
+
+                self.check_format(type_, format_, k, v)
+
+                if load_only:
+                    del self[k]
+                    continue
+
                 self[k] = v
 
         if hasattr(self, 'required'):
@@ -555,7 +558,8 @@ class Schema(dict):
                         for v in value:
                             cls(**v)
                     else:
-                        self.check_array_type(cls.type, format_,  key, value)
+                        for v in value:
+                            self.check_type(cls.type, format_,  key, v)
             if type_ == 'integer' and not isinstance(value, int):
                 raise ValueError(f'The attribute "{key}" must be an int, but was "{type(value)}"')
             if type_ == 'number' and not isinstance(value, int) and not isinstance(value, float):
@@ -564,37 +568,9 @@ class Schema(dict):
             if type_ == 'string' and not isinstance(value, str):
                 raise ValueError(f'The attribute "{key}" must be a string, but was "{type(value)}"')
             if type_ == 'boolean' and not isinstance(value, bool):
-                raise ValueError(f'The attribute "{key}" must be an int, but was "{type(value)}"')
-            self.check_format(type_, format_, value)
+                raise ValueError(f'The attribute "{key}" must be a bool, but was "{type(value)}"')
 
-    def check_array_type(self, type_, format_, key, value):
-        if type_:
-            if type_ == 'integer' and not all([isinstance(v, int) for v in value]):
-                raise ValueError(f'The list "{key}" must have all items of type int')
-            if type_ == 'number' and not all([isinstance(v, int) for v in value]) and not all([isinstance(v, float) for v in value]):
-                raise ValueError(
-                    f'The list "{key}" must have all items of type int or float')
-            if type_ == 'string' and not all([isinstance(v, str) for v in value]):
-                raise ValueError(f'The list "{key}" must have all items of type string')
-            if type_ == 'boolean' and not all([isinstance(v, bool) for v in value]):
-                raise ValueError(f'The list "{key}" must have all items of type string')
-            self.check_format(type_, format_, value)
-
-    def check_enum_type(self, type_, format_, value):
-        if type_:
-            if type_ == 'integer' and not isinstance(value, int):
-                raise ValueError(f'The enum "{value}" must be an int, but was "{type(value)}"')
-            if type_ == 'number' and not isinstance(value, int) and not isinstance(value, float):
-                raise ValueError(
-                    f'The enum "{value}" must be an int or float, but was "{type(value)}"')
-            if type_ == 'string' and not isinstance(value, str):
-                raise ValueError(f'The enum "{value}" must be a string, but was "{type(value)}"')
-            if type_ == 'boolean' and not isinstance(value, bool):
-                raise ValueError(f'The enum "{value}" must be an int, but was "{type(value)}"')
-            self.check_format(type_, format_, value)
-
-    @staticmethod
-    def check_format(type_, format_, value):
+    def check_format(self, type_, format_, key, value):
         validator = get_validate_format(type_, format_)
         if validator:
             validator().validate(value)
@@ -628,8 +604,6 @@ class Schema(dict):
                         if v["type"] == "array":
                             if "items" in v:
                                 val = [v["items"].example()]
-                            else:
-                                val = []
                     else:
                         val = [] if v == "array" else v
                     example.update({k: val})

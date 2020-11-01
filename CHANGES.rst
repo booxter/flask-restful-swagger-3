@@ -1,3 +1,14 @@
+Version 0.4.3
+-------------
+
+Released 2020-11-01
+
+-  Update Schema class
+-  Refactoring code
+-  Check password format of string, Add load_only to properties item to not display item
+-  Update and refactoring tests
+
+
 Version 0.4.2
 -------------
 

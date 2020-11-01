@@ -2,6 +2,7 @@ import pytest
 from flask_restful import inputs
 
 import flask_restful_swagger_3.swagger as swagger
+from flask_restful_swagger_3 import Schema
 
 
 class TestSwagger:
@@ -10,6 +11,11 @@ class TestSwagger:
         d = {'openapi': '3.0.0'}
         swagger.set_nested(d, 'info.title', 'API')
         assert d == {'openapi': '3.0.0', 'info': {'title': 'API'}}
+
+    def test_should_add_parameters(self):
+        d = {'openapi': '3.0.0'}
+        swagger.add_parameters(d, {'title': 'title', 'description': 'description'})
+        assert d == {'openapi': '3.0.0', 'info': {'title': 'title', 'description': 'description'}}
 
     def test_should_get_data_type_str(self):
         assert swagger.get_data_type({'type': 'string'}) == str
@@ -38,6 +44,50 @@ class TestSwagger:
 
     def test_should_get_data_type_without_type(self):
         assert swagger.get_data_type({'schema': {}}) is None
+
+    def test_should_get_data_type_of_obj(self):
+        class String(Schema):
+            type = 'string'
+
+        class Scheme(Schema):
+            type = 'object'
+            properties = {
+                'fake': {
+                    'type': 'string'
+                },
+                'fake2': String
+            }
+        assert swagger.get_data_type(Scheme.array()) == str
+
+    def test_get_parser_from_schema(self):
+        class Scheme(Schema):
+            type = 'object'
+            properties = {
+                'fake': {
+                    'type': 'string'
+                },
+                'fake2': {
+                    'type': 'integer'
+                }
+            }
+
+        parser_result = list(swagger.get_parser_from_schema({'schema': {'$ref': Scheme}}))
+        for name, parser in swagger.get_parser_from_schema({'schema': {'$ref': Scheme}}):
+            print(name)
+            print(parser_result)
+
+        assert parser_result[0][0] == 'fake'
+        assert parser_result[0][1] == {
+            'dest': 'fake', 'type': str, 'location': 'args', 'help': None,
+            'required': False, 'default': None, 'choices': (), 'action': 'store'
+        }
+
+        assert parser_result[1][0] == 'fake2'
+        assert parser_result[1][1] == {
+            'dest': 'fake2', 'type': int, 'location': 'args', 'help': None,
+            'required': False, 'default': None, 'choices': (), 'action': 'store'
+        }
+
 
     def test_should_get_parser_arg(self):
         param = {
@@ -255,6 +305,14 @@ class TestSwagger:
         with pytest.raises(swagger.ValidationError):
             assert swagger.validate_contact_object(contact_object)
 
+    def test_should_validate_contact_object_bad_email(self):
+        contact_object = {
+            'email': 'John'
+        }
+
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_contact_object(contact_object)
+
     def test_should_validate_license_object(self):
         license_object = {
             'name': 'my_license',
@@ -281,6 +339,15 @@ class TestSwagger:
         with pytest.raises(swagger.ValidationError):
             assert swagger.validate_license_object(license_object)
 
+    def test_should_validate_license_object_bad_url(self):
+        license_object = {
+            'name': 'my_license',
+            'url': 'url',
+        }
+
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_license_object(license_object)
+
     def test_should_validate_path_item_object(self):
         path_item_object = {
             "servers": {
@@ -294,9 +361,11 @@ class TestSwagger:
                     "201": {
                         "description": "Created user",
                         "headers": {
-                            "description": "Location of the new item",
-                            "schema": {
-                                "type": "string"
+                            'X-Something-Bidule': {
+                                "description": "Location of the new item",
+                                "schema": {
+                                    "type": "string"
+                                }
                             }
                         },
                         "content": {
@@ -304,7 +373,7 @@ class TestSwagger:
                                 "schema": {
                                     "$ref": "#/components/schemas/UserModel"
                                 },
-                                "examples": {
+                                "example": {
                                     "application/json": {
                                         "id": 1
                                     }
@@ -336,52 +405,19 @@ class TestSwagger:
         with pytest.raises(swagger.ValidationError):
             assert swagger.validate_path_item_object({'some_invalid_field': 1})
 
-    def test_should_validate_operation_object(self):
-        obj = {
-            'tags': ['user'],
-            'description': 'Returns a user',
-            'deprecated': True,
-            'responses': {
-                '200': {
-                    'description': 'Get users',
-                    'content': {
-                        'application/json': {
-                            'schema': {
-                                "$ref": "#/components/schemas/UserModel"
-                            },
-                            'examples': {
-                                'application/json': {
-                                    'id': 1,
-                                    'name': 'somebody'
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            'requestBody': {
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "$ref": "#/components/schemas/User"
-                        },
-                        "examples": {
-                            "user": {
-                                "summary": "User Example",
-                                "externalValue": "http://foo.bar/examples/user-example.json"
-                            }
-                        }
-                    }
-                }
-            },
-            'externalDocs': {
-                "url": "https://example.com"
-            },
-            'security': {
-                "api_key": []
-            }
-        }
-        assert swagger.validate_operation_object(obj) is None
+    def test_should_validate_operation_object(self, operation_object):
+
+        assert swagger.validate_operation_object(operation_object) is None
+
+    def test_should_validate_operation_object_invalid_description(self, operation_object):
+        operation_object['description'] = 3
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_operation_object(operation_object)
+
+    def test_should_validate_operation_object_invalid_deprecated(self, operation_object):
+        operation_object['deprecated'] = 'deprecated'
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_operation_object(operation_object)
 
     def test_should_validate_operation_object_invalid_field(self):
         with pytest.raises(swagger.ValidationError):
@@ -441,3 +477,285 @@ class TestSwagger:
     def test_should_concatenate_multiple_urls(self):
         urls = ['/api/', '/doc', 'sub_doc/', 'file']
         assert swagger.slash_join(*urls) == '/api/doc/sub_doc/file'
+
+    def test_validate_parameter_object(self, parameter_object):
+        assert swagger.validate_parameter_object(parameter_object) is None
+
+    def test_validate_parameter_object_unknown_field(self, parameter_object):
+        parameter_object['unknown'] = 'no'
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_parameter_object(parameter_object)
+
+    def test_validate_parameter_object_missing_name(self, parameter_object):
+        del parameter_object['name']
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_parameter_object(parameter_object)
+
+    def test_validate_parameter_object_missing_in(self, parameter_object):
+        del parameter_object['in']
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_parameter_object(parameter_object)
+
+    def test_validate_parameter_object_invalid_in(self, parameter_object):
+        parameter_object['in'] = "something else"
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_parameter_object(parameter_object)
+
+    def test_validate_responses_object(self, responses_object):
+        assert swagger.validate_responses_object(responses_object) is None
+
+    def test_validate_response_object(self, responses_object):
+        response_object = responses_object["4XX"]
+        response_object['headers'] = {"$ref": "#/components/schemas/CategoryDumpSchema"}
+        response_object['links'] = {"operationRef": 'my_ref'}
+        assert swagger.validate_response_object(response_object) is None
+
+    def test_validate_response_object_unknown_field(self, responses_object):
+        response_object = responses_object["4XX"]
+        response_object['unknown'] = 'unknown'
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_response_object(response_object)
+
+    def test_validate_response_object_missing_description(self, responses_object):
+        response_object = responses_object["4XX"]
+        del response_object['description']
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_response_object(response_object)
+
+    def test_validate_request_body_object_missing_content(self, request_body):
+        del request_body['content']
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_request_body_object(request_body)
+
+    def test_validate_content_object_bad_pattern(self, request_body):
+        content = request_body['content']
+        content['test'] = 'other'
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_content_object(content)
+
+    def test_validate_components_schemas_object(self, components_schemas_object):
+        assert swagger.validate_components_object(components_schemas_object) is None
+
+    def test_validate_components_schemas_object_required_not_list(self, components_schemas_object):
+        components_schemas_object['schemas']['RequiredSchema']['required'] = 'not list'
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_components_object(components_schemas_object)
+
+    def test_validate_components_responses_object(self, components_responses_object):
+        assert swagger.validate_components_object(components_responses_object) is None
+
+    def test_validate_components_parameters_object(self, components_parameters_object):
+        assert swagger.validate_components_object(components_parameters_object) is None
+
+    def test_validate_components_examples_object(self, components_examples_object):
+        assert swagger.validate_components_object(components_examples_object) is None
+
+    def test_validate_components_examples_object_summary_not_str(self, components_examples_object):
+        components_examples_object['examples']['CategoryExample']['summary'] = True
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_components_object(components_examples_object)
+
+    def test_validate_components_request_bodies_object(self, components_request_bodies_object):
+        assert swagger.validate_components_object(components_request_bodies_object) is None
+
+    def test_validate_components_headers_object(self, components_headers_object):
+        assert swagger.validate_components_object(components_headers_object) is None
+
+    def test_validate_components_headers_object_raise_error_when_name_is_specified(self, components_headers_object):
+        components_headers_object['headers']['X-Something-Bidule']['name'] = "name"
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_components_object(components_headers_object)
+
+    def test_validate_components_headers_object_raise_error_when_in_is_specified(self, components_headers_object):
+        components_headers_object['headers']['X-Something-Bidule']['in'] = "in"
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_components_object(components_headers_object)
+
+    def test_validate_components_security_schemes_object(self, components_security_schemes_object):
+        assert swagger.validate_components_object(components_security_schemes_object) is None
+
+    def test_validate_components_security_schemes_object_type_not_specified(self, components_security_schemes_object):
+        del components_security_schemes_object['securitySchemes']['auth']['type']
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_components_object(components_security_schemes_object)
+
+    def test_validate_components_security_schemes_object_type_not_in_choices(self, components_security_schemes_object):
+        components_security_schemes_object['securitySchemes']['auth']['type'] = "other"
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_components_object(components_security_schemes_object)
+
+    def test_validate_components_security_schemes_object_name_missing_when_type_is_api_key(
+            self, components_security_schemes_object):
+        del components_security_schemes_object['securitySchemes']['api-key']['name']
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_components_object(components_security_schemes_object)
+
+    def test_validate_components_security_schemes_object_in_missing_when_type_is_api_key(
+            self, components_security_schemes_object):
+        del components_security_schemes_object['securitySchemes']['api-key']['in']
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_components_object(components_security_schemes_object)
+
+    def test_validate_components_security_schemes_object_scheme_missing_when_type_is_http(
+            self, components_security_schemes_object):
+        del components_security_schemes_object['securitySchemes']['http']['scheme']
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_components_object(components_security_schemes_object)
+
+    def test_validate_components_security_schemes_object_scheme_bad_choice(
+            self, components_security_schemes_object):
+        components_security_schemes_object['securitySchemes']['http']['scheme'] = 'bad_choice'
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_components_object(components_security_schemes_object)
+
+    def test_validate_components_security_schemes_object_open_id_connect_url_missing_when_type_is_open_id_connect(
+            self, components_security_schemes_object):
+        del components_security_schemes_object['securitySchemes']['openId']['openIdConnectUrl']
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_components_object(components_security_schemes_object)
+
+    def test_validate_components_security_schemes_object_open_id_connect_url_bad_url_format(
+            self, components_security_schemes_object):
+        components_security_schemes_object['securitySchemes']['openId']['openIdConnectUrl'] = 'url'
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_components_object(components_security_schemes_object)
+
+    def test_validate_components_security_schemes_object_flows_missing_when_type_is_oauth2(
+            self, components_security_schemes_object):
+        del components_security_schemes_object['securitySchemes']['auth']['flows']
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_components_object(components_security_schemes_object)
+
+    def test_validate_components_security_schemes_object_flows_bad_choice(
+            self, components_security_schemes_object):
+        del components_security_schemes_object['securitySchemes']['auth']['flows']['implicit']
+        components_security_schemes_object['securitySchemes']['auth']['flows']['bad_choice'] = {}
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_components_object(components_security_schemes_object)
+
+    def test_validate_components_security_schemes_object_flows_unknown_fields(
+            self, components_security_schemes_object):
+        components_security_schemes_object['securitySchemes']['auth']['flows']['implicit']['unknown'] = 'unknown'
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_components_object(components_security_schemes_object)
+
+    def test_validate_components_security_schemes_object_flows_missing_scopes(
+            self, components_security_schemes_object):
+        del components_security_schemes_object['securitySchemes']['auth']['flows']['implicit']['scopes']
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_components_object(components_security_schemes_object)
+
+    def test_validate_components_security_schemes_object_flows_scopes_bad_items_type(
+            self, components_security_schemes_object):
+        components_security_schemes_object['securitySchemes']['auth']['flows']['implicit']['scopes']['write:pets'] = True
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_components_object(components_security_schemes_object)
+
+    def test_validate_components_security_schemes_object_flows_scopes_bad_type(
+            self, components_security_schemes_object):
+        components_security_schemes_object['securitySchemes']['auth']['flows']['implicit']['scopes'] = 'write:pets'
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_components_object(components_security_schemes_object)
+
+    def test_validate_components_security_schemes_object_flows_missing_authorization_url(
+            self, components_security_schemes_object):
+        del components_security_schemes_object['securitySchemes']['auth']['flows']['implicit']['authorizationUrl']
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_components_object(components_security_schemes_object)
+
+    def test_validate_components_security_schemes_object_flows_authorization_url_bad_url_format(
+            self, components_security_schemes_object):
+        components_security_schemes_object['securitySchemes']['auth']['flows']['implicit']['authorizationUrl'] = 'url'
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_components_object(components_security_schemes_object)
+
+    def test_validate_components_security_schemes_object_flows_missing_token_url(
+            self, components_security_schemes_object):
+        del components_security_schemes_object['securitySchemes']['auth-password']['flows']['password']['tokenUrl']
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_components_object(components_security_schemes_object)
+
+    def test_validate_components_security_schemes_object_flows_token_url_bad_url_format(
+            self, components_security_schemes_object):
+        components_security_schemes_object['securitySchemes']['auth-password']['flows']['password']['tokenUrl'] = 'url'
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_components_object(components_security_schemes_object)
+
+    def test_validate_components_security_schemes_object_flows_refresh_url_bad_url_format(
+            self, components_security_schemes_object):
+        components_security_schemes_object['securitySchemes']['auth-authorizationCode']['flows']['authorizationCode']['refreshUrl'] = 'url'
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_components_object(components_security_schemes_object)
+
+    def test_validate_components_link_object(self, components_link_object):
+        assert swagger.validate_components_object(components_link_object) is None
+
+    def test_validate_components_link_object_operation_ref_is_not_str(self, components_link_object):
+        components_link_object['links']['UserRepositories']['operationRef'] = 1
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_components_object(components_link_object) is None
+
+    def test_validate_components_link_object_operation_id_is_not_str(self, components_link_object):
+        components_link_object['links']['UserRepositories']['operationId'] = 2
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_components_object(components_link_object) is None
+
+    def test_validate_components_link_object_description_is_not_str(self, components_link_object):
+        components_link_object['links']['UserRepositories']['description'] = 3
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_components_object(components_link_object) is None
+
+    def test_validate_server_object(self, server_object):
+        assert swagger.validate_server_object(server_object) is None
+
+    def test_validate_server_object_unknown_field(self, server_object):
+        server_object['unknown'] = "unknown"
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_server_object(server_object)
+
+    def test_validate_server_object_url_bad_format(self, server_object):
+        server_object['url'] = "url"
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_server_object(server_object)
+
+    def test_validate_server_object_missing_url(self, server_object):
+        del server_object['url']
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_server_object(server_object)
+
+    def test_validate_server_object_not_dict(self):
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_server_object("server")
+
+    def test_validate_server_object_list_ok(self, server_object):
+        servers = [server_object]
+        assert swagger.validate_servers_object(servers) is None
+
+    def test_validate_server_variables_object_unknown_fields(self, server_object):
+        variables = server_object['variables']
+        variables['unknown'] = "unknown"
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_server_variables_object(variables)
+
+    def test_validate_server_variables_object_enum_no_list(self, server_object):
+        variables = server_object['variables']
+        variables['enum'] = "enum"
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_server_variables_object(variables)
+
+    def test_validate_server_variables_object_some_enum__items_not_str(self, server_object):
+        variables = server_object['variables']
+        variables['enum'].append(2)
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_server_variables_object(variables)
+
+    def test_validate_server_variables_object_missing_default(self, server_object):
+        variables = server_object['variables']
+        del variables['default']
+        with pytest.raises(swagger.ValidationError):
+            assert swagger.validate_server_variables_object(variables)
+
+    def test_sanitize_doc(self):
+        assert swagger.sanitize_doc(["desciption1", "description2"]) == "desciption1<br/>description2"
+
+
