@@ -1,5 +1,7 @@
 import pytest
 
+from flask_restful_swagger_3 import Schema
+
 
 class TestSchema:
     def test_should_validate_schema_valid(self, schema_test_model):
@@ -10,8 +12,52 @@ class TestSchema:
             schema_test_model(**{'name': 'somebody'})
 
     def test_should_validate_schema_invalid_type(self, schema_test_model):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError) as e:
             schema_test_model(**{'id': '1'})
+
+        assert str(e.value) == 'The attribute "id" must be an int, but was "<class \'str\'>"'
+
+        with pytest.raises(ValueError) as e:
+            schema_test_model(**{'id': 1, 'name': 1})
+
+        assert str(e.value) == 'The attribute "name" must be a string, but was "<class \'int\'>"'
+
+        with pytest.raises(ValueError) as e:
+            schema_test_model(**{'id': 1, 'name': 'name', 'number': 'n'})
+
+        assert str(e.value) == 'The attribute "number" must be an int or float, but was "<class \'str\'>"'
+
+        with pytest.raises(ValueError) as e:
+            schema_test_model(**{'id': 1, 'name': 'name', 'number': 2.5, 'boolean': 'string'})
+
+        assert str(e.value) == 'The attribute "boolean" must be a bool, but was "<class \'str\'>"'
+
+        class Sch(Schema):
+            type = 'object'
+            properties = {
+                'list': schema_test_model.array()
+            }
+
+        with pytest.raises(ValueError) as e:
+            Sch(**{'list': [
+                {'id': 1, 'name': 'name', 'number': 2.5, 'boolean': 'string'}
+            ]})
+
+        assert str(e.value) == 'The attribute "boolean" must be a bool, but was "<class \'str\'>"'
+
+        class Enum(Schema):
+            type = 'object'
+            properties = {
+                'enum': {
+                    'type': 'string',
+                    'enum': ['1', '2']
+                }
+            }
+
+        with pytest.raises(ValueError) as e:
+            Enum(**{'enum': 2})
+
+        assert str(e.value) == 'The attribute "enum" must be a string, but was "<class \'int\'>"'
 
     def test_should_validate_nested_schema_ok(self, nested_schema, nested_obj):
         nested_schema(**nested_obj)
@@ -42,7 +88,10 @@ class TestSchema:
             bad_enum_schema_type(**enum_obj)
 
     def test_should_validate_obj_with_sub_schema(self, sub_schema, obj_of_sub_schema):
-        sub_schema(**obj_of_sub_schema)
+        assert sub_schema(**obj_of_sub_schema)
+
+    def test_sub_schema_has_required_of_parent(self, sub_schema_without_required):
+        assert sub_schema_without_required.required == ['other_attribute']
 
     def test_should_valdate_definitions_of_sub_schema(self, sub_schema, expected_definition_of_sub_schema):
         assert sub_schema.definitions()['properties'] == expected_definition_of_sub_schema['properties']
@@ -102,28 +151,28 @@ class TestSchema:
         with pytest.raises(ValueError):
             schema_with_array(**object_with_array)
 
-    def test_should_validate_array_schema_ok(self, pmodel):
+    def test_should_validate_array_schema_ok(self, p_model):
         object_with_string_array = {
             "name": "test",
             "keys": ["keys1", "keys2"]
         }
-        pmodel(**object_with_string_array)
+        p_model(**object_with_string_array)
 
-    def test_should_raise_error_when_array_has_all_bad_type(self, pmodel):
+    def test_should_raise_error_when_array_has_all_bad_type(self, p_model):
         object_with_string_array = {
             "name": "test",
             "keys": [1, 2]
         }
         with pytest.raises(ValueError):
-            pmodel(**object_with_string_array)
+            p_model(**object_with_string_array)
 
-    def test_should_raise_error_when_array_has_some_bad_type(self, pmodel):
+    def test_should_raise_error_when_array_has_some_bad_type(self, p_model):
         object_with_string_array = {
             "name": "test",
             "keys": ["keys1", 2]
         }
         with pytest.raises(ValueError):
-            pmodel(**object_with_string_array)
+            p_model(**object_with_string_array)
 
     def test_should_validate_nullable_schema_ok(self, nullable_schema):
         nullable_object = {
@@ -147,3 +196,25 @@ class TestSchema:
         }
         with pytest.raises(ValueError):
             bad_nullable_schema(**nullable_object)
+
+    def test_schema_password_with_load_only(self):
+        class Password(Schema):
+            type = 'object'
+            properties = {
+                'name': {
+                    'type': 'string',
+                },
+                'pass': {
+                    'type': 'string',
+                    'format': 'password',
+                    'load_only': True
+                }
+            }
+        assert Password(**{'name': 'name', 'pass': 'password'}) == {'name': 'name'}
+        assert Password.definitions() == {
+            'properties': {
+                'name': {'type': 'string'},
+                'pass': {'format': 'password', 'type': 'string'}
+            },
+            'type': 'object'
+        }

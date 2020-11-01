@@ -320,7 +320,7 @@ def validate_info_object(info_object):
         if k not in ['title', 'description', 'termsOfService', 'contact', 'license', 'version']:
             raise ValidationError('Invalid info object. Unknown field "{field}". See {url}'.format(
                 field=k,
-                url='http://swagger.io/specification/#infoObject'))
+                url='https://swagger.io/specification/#infoObject'))
 
         if k == 'contact':
             validate_contact_object(v)
@@ -343,10 +343,12 @@ def validate_contact_object(contact_object):
             if k not in ['name', 'url', 'email']:
                 raise ValidationError('Invalid contact object. Unknown field "{field}". See {url}'.format(
                     field=k,
-                    url='http://swagger.io/specification/#contactObject'))
+                    url='https://swagger.io/specification/#contactObject'))
 
             if k == 'email':
-                validate_email(v)
+                if not validate_email(v):
+                    raise ValidationError('Invalid email. See {url}'.format(
+                        url='https://swagger.io/specification/#contactObject'))
                 continue
 
 
@@ -356,10 +358,12 @@ def validate_license_object(license_object):
             if k not in ['name', 'url']:
                 raise ValidationError('Invalid license object. Unknown field "{field}". See {url}'.format(
                     field=k,
-                    url='http://swagger.io/specification/#licenseObject'))
+                    url='https://swagger.io/specification/#licenseObject'))
 
-            if k ==  'url':
-                validate_url(v)
+            if k == 'url':
+                if not validate_url(v):
+                    raise ValidationError('Invalid url. See {url}'.format(
+                        url='https://swagger.io/specification/#licenseObject'))
                 continue
 
         if 'name' not in license_object:
@@ -367,7 +371,7 @@ def validate_license_object(license_object):
 
 
 def validate_path_item_object(path_item_object):
-    """Checks if the passed object is valid according to http://swagger.io/specification/#pathItemObject"""
+    """Checks if the passed object is valid according to https://swagger.io/specification/#pathItemObject"""
 
     for k, v in path_item_object.items():
         if k == '$ref':
@@ -390,8 +394,8 @@ def validate_path_item_object(path_item_object):
         if k == "description":
             continue
         raise ValidationError('Invalid path item object. Unknown field "{field}". See {url}'.format(
-                field=k,
-                url='http://swagger.io/specification/#pathItemObject'))
+            field=k,
+            url='https://swagger.io/specification/#pathItemObject'))
 
 
 def validate_operation_object(operation_object):
@@ -412,7 +416,7 @@ def validate_operation_object(operation_object):
                 continue
             raise ValidationError('Invalid operation object. "{0}" must be a bool but was "{1}"', k, type(v))
         if k in ['externalDocs']:
-            validate_external_documentation_object(v) # to check
+            validate_external_documentation_object(v)  # to check
             continue
         if k in ['parameters']:
             for parameter in v:
@@ -425,26 +429,28 @@ def validate_operation_object(operation_object):
             validate_security_requirement_object(v)
             continue
         raise ValidationError('Invalid operation object. Unknown field "{field}". See {url}'.format(
-                field=k,
-                url='http://swagger.io/specification/#pathItemObject'))
+            field=k,
+            url='https://swagger.io/specification/#operationObject'))
     if 'responses' not in operation_object:
         raise ValidationError('Invalid operation object. Missing field "responses"')
+
+
+def validate_parameters_object(parameter_object):
+    for k, v in parameter_object.items():
+        try:
+            validate_parameter_object(v)
+        except ValidationError:
+            validate_reference_object(v)
 
 
 def validate_parameter_object(parameter_object):
     for k, v in parameter_object.items():
         if k not in ['name', 'in', 'description', 'required', 'deprecated', 'allowEmptyValue', 'style', 'explode',
                      'allowReserved', 'schema', 'example', 'examples', 'content', 'matrix', 'label', 'form',
-                     'simple', 'spaceDelimited', 'pipeDelimited', 'deepObject', 'reqparser']:
+                     'simple', 'spaceDelimited', 'pipeDelimited', 'deepObject']:
             raise ValidationError('Invalid parameter object. Unknown field "{field}". See {url}'.format(
-                    field=k,
-                    url='http://swagger.io/specification/#parameterObject'))
-    if 'reqparser' in parameter_object:
-        if 'name' not in parameter_object['reqparser']:
-            raise ValidationError('name for request parser not specified')
-        if 'parser' not in parameter_object['reqparser'] or not isinstance(parameter_object['reqparser']['parser'], reqparse.RequestParser):
-            raise ValidationError('RequestParser object not specified')
-        return
+                field=k,
+                url='https://swagger.io/specification/#parameterObject'))
     if 'name' not in parameter_object:
         raise ValidationError('Invalid parameter object. Missing field "name"')
     if 'in' not in parameter_object:
@@ -452,8 +458,8 @@ def validate_parameter_object(parameter_object):
     else:
         if parameter_object['in'] not in ['path', 'query', 'header', 'cookie']:
             raise ValidationError(
-                    'Invalid parameter object. Value of field "in" must be path, query, header, cookie was "{0}"'.format(
-                            parameter_object['in']))
+                'Invalid parameter object. Value of field "in" must be path, query, header, cookie was "{0}"'.format(
+                    parameter_object['in']))
     if 'schema' in parameter_object:
         validate_schema_object(parameter_object['schema'])
 
@@ -500,10 +506,18 @@ def validate_response_object(response_object):
             validate_link_object(v)
             continue
         raise ValidationError('Invalid response object. Unknown field "{field}". See {url}'.format(
-                field=k,
-                url='http://swagger.io/specification/#responseObject'))
+            field=k,
+            url='https://swagger.io/specification/#responseObject'))
     if 'description' not in response_object:
         raise ValidationError('Invalid response object. Missing field "description"')
+
+
+def validate_request_bodies_object(request_body_object):
+    for k, v in request_body_object.items():
+        try:
+            validate_request_body_object(v)
+        except ValidationError:
+            validate_reference_object(v)
 
 
 def validate_request_body_object(request_body_object):
@@ -527,8 +541,8 @@ def validate_content_object(content_object):
             validate_media_type_object(v)
             continue
         raise ValidationError(
-            'Invalid content object, the field must match the following patter ("application/json", "*/*" ...").'
-            '. See http://swagger.io/specification/#mediaObject'
+            'Invalid content object, the field must match the following pattern ("application/json", "*/*" ...").'
+            '. See https://swagger.io/specification/#contentObject'
         )
 
 
@@ -537,8 +551,11 @@ def validate_media_type_object(media_type_object):
         if k == "schema":
             validate_schema_object(v)
             continue
+        if k == "example":
+            continue
+
         if k == "examples":
-            validate_example_object(v)
+            validate_examples_object(v)
             continue
 
 
@@ -546,11 +563,157 @@ def validate_security_requirement_object(security_requirement_object):
     pass
 
 
+def validate_security_schemes_object(security_scheme_object):
+    for k, v in security_scheme_object.items():
+        try:
+            validate_security_scheme_object(v)
+        except ValidationError:
+            validate_reference_object(v)
+
+
+def validate_security_scheme_object(security_scheme_object):
+    scheme_choices = ['basic', 'bearer', 'digest', 'HOBA', 'mutual',
+                      'negotiate', 'oauth', 'SCRAM-SHA-1', 'SCRAM-SHA-256', 'vapid']
+    for k, v in security_scheme_object.items():
+        if k not in ['type', 'description', 'name', 'in', 'scheme', 'bearerFormat', 'flows', 'openIdConnectUrl']:
+            raise ValidationError('Invalid parameter object. Unknown field "{field}". See {url}'.format(
+                field=k,
+                url='https://swagger.io/specification/#securitySchemeObject'))
+
+    if 'type' not in security_scheme_object:
+        raise ValidationError('Invalid security scheme object. Missing field "type"')
+    _type = security_scheme_object['type']
+    if _type not in ["apiKey", "http", "oauth2", "openIdConnect"]:
+        raise ValidationError('"type" must have "apiKey", "http", "oauth2" or "openIdConnect"')
+    if _type == 'apiKey':
+        if 'name' not in security_scheme_object:
+            raise ValidationError('Invalid security scheme object. Missing field "name" when type is "apiKey"')
+        if 'in' not in security_scheme_object:
+            raise ValidationError('Invalid security scheme object. Missing field "in" when type is "apiKey"')
+    if _type == 'http':
+        if 'scheme' not in security_scheme_object:
+            raise ValidationError('Invalid security scheme object. Missing field "scheme" when type is "http"')
+        scheme = security_scheme_object['scheme']
+        if scheme not in scheme_choices:
+            raise ValidationError(
+                f'Invalid security scheme object. "scheme" must be one of {", ".join(scheme_choices)} ')
+    if _type == 'oauth2':
+        if 'flows' not in security_scheme_object:
+            raise ValidationError('Invalid security scheme object. Missing field "flows" when type is "oauth2"')
+        validate_oauth_flows_object(security_scheme_object['flows'])
+    if _type == 'openIdConnect':
+        if 'openIdConnectUrl' not in security_scheme_object:
+            raise ValidationError('Invalid security scheme object. Missing field '
+                                  '"openIdConnectUrl" when type is openIdConnectUrl')
+        if not validate_url(security_scheme_object['openIdConnectUrl']):
+            raise ValidationError('Invalid url. See {url}'.format(
+                url='https://swagger.io/specification/#securitySchemeObject'))
+
+
+def validate_oauth_flows_object(oauth_flows_object):
+    for k, v in oauth_flows_object.items():
+        if k not in ['implicit', 'password', 'clientCredentials', 'authorizationCode']:
+            raise ValidationError('Invalid oauth flows object. Unknown field "{field}". See {url}'.format(
+                field=k,
+                url='https://swagger.io/specification/#OAuthFlowsObject'))
+
+    if 'implicit' in oauth_flows_object:
+        _validate_oauth_flows_object('implicit', oauth_flows_object['implicit'])
+
+    if 'password' in oauth_flows_object:
+        _validate_oauth_flows_object('password', oauth_flows_object['password'])
+
+    if 'clientCredentials' in oauth_flows_object:
+        _validate_oauth_flows_object('clientCredentials', oauth_flows_object['clientCredentials'])
+
+    if 'authorizationCode' in oauth_flows_object:
+        _validate_oauth_flows_object('authorizationCode', oauth_flows_object['authorizationCode'])
+
+
+def _validate_oauth_flows_object(key, oauth_flows_object):
+    for k, v in oauth_flows_object.items():
+        if k not in ['authorizationUrl', 'tokenUrl', 'refreshUrl', 'scopes']:
+            raise ValidationError('Invalid oauth flows object. Unknown field "{field}". See {url}'.format(
+                field=k,
+                url='https://swagger.io/specification/#OAuthFlowsObject'))
+
+    if 'refreshUrl' in oauth_flows_object:
+        if not validate_url(oauth_flows_object['refreshUrl']):
+            raise ValidationError('Invalid url. See {url}'.format(
+                url='https://swagger.io/specification/#OAuthFlowsObject'))
+
+    if 'scopes' not in oauth_flows_object:
+        raise ValidationError('Invalid oauth flows object. Missing field "scopes"')
+    try:
+        for k, v in oauth_flows_object['scopes'].items():
+            if not type(v) is str:
+                raise ValidationError('Invalid oauth flows object. "scopes" must be a dict of string')
+    except AttributeError:
+        raise ValidationError('Invalid oauth flows object. "scopes" must be a dict of string')
+    if key == 'implicit' or key == 'authorizationCode':
+        check_authorization_url(oauth_flows_object)
+
+    if key == 'authorizationCode' or key == 'password' or key == 'clientCredentials':
+        check_token_url(oauth_flows_object)
+
+
+def check_authorization_url(oauth_flows_object):
+    if 'authorizationUrl' not in oauth_flows_object:
+        raise ValidationError('Invalid oauth flows object. Missing field "authorizationUrl"')
+    if not validate_url(oauth_flows_object['authorizationUrl']):
+        raise ValidationError('Invalid url. See {url}'.format(
+            url='https://swagger.io/specification/#OAuthFlowsObject'))
+
+
+def check_token_url(oauth_flows_object):
+    if 'tokenUrl' not in oauth_flows_object:
+        raise ValidationError('Invalid oauth flows object. Missing field "tokenUrl"')
+    if not validate_url(oauth_flows_object['tokenUrl']):
+        raise ValidationError('Invalid url. See {url}'.format(
+            url='https://swagger.io/specification/#OAuthFlowsObject'))
+
+
 def validate_components_object(definition_object):
     for k, v in definition_object.items():
         if k == "schemas":
-            validate_schema_object(v)
+            validate_schemas_object(v)
             continue
+
+        if k == "responses":
+            validate_responses_object(v)
+            continue
+
+        if k == "parameters":
+            validate_parameters_object(v)
+            continue
+
+        if k == "examples":
+            validate_examples_object(v)
+            continue
+
+        if k == "requestBodies":
+            validate_request_bodies_object(v)
+            continue
+
+        if k == "headers":
+            validate_headers_object(v)
+            continue
+
+        if k == "securitySchemes":
+            validate_security_schemes_object(v)
+
+        if k == 'links':
+            validate_links_object(v)
+
+        if k == 'callbacks':
+            validate_path_item_object(v)
+
+
+def validate_schemas_object(schema_object):
+    for k, v in schema_object.items():
+        if 'properties' in v:
+            continue
+        validate_schema_object(v)
 
 
 def validate_schema_object(schema_object):
@@ -565,28 +728,56 @@ def validate_schema_object(schema_object):
 
 def validate_headers_object(headers_object):
     for k, v in headers_object.items():
+        try:
+            validate_header_object(v)
+        except ValidationError:
+            validate_reference_object(v)
+
+
+def validate_header_object(headers_object):
+    for k, v in headers_object.items():
         if k not in ['name', 'in', 'description', 'required', 'deprecated', 'allowEmptyValue', 'style', 'explode',
                      'allowReserved', 'schema', 'example', 'examples', 'content', 'matrix', 'label', 'form',
                      'simple', 'spaceDelimited', 'pipeDelimited', 'deepObject']:
             raise ValidationError('Invalid headers object. Unknown field "{field}". See {url}'.format(
-                    field=k,
-                    url='http://swagger.io/specification/#headerObject'))
+                field=k,
+                url='https://swagger.io/specification/#headerObject'))
         if k == 'name':
-            raise ValidationError('"name" must not be specified. See http://swagger.io/specification/#headerObject')
+            raise ValidationError('"name" must not be specified. See https://swagger.io/specification/#headerObject')
         if k == 'in':
-            raise ValidationError('"in" must not be specified. See http://swagger.io/specification/#headerObject')
+            raise ValidationError('"in" must not be specified. See https://swagger.io/specification/#headerObject')
 
         if k == 'schema':
             validate_schema_object(headers_object['schema'])
             continue
 
 
+def validate_links_object(link_object):
+    for k, v in link_object.items():
+        try:
+            validate_link_object(v)
+        except ValidationError:
+            validate_reference_object(v)
+
+
 def validate_link_object(link_object):
     for k, v in link_object.items():
-        if k in ['operationRef', 'operationId', 'parameters', 'requestBody', 'description']:
-            continue
+        if k not in ['operationRef', 'operationId', 'parameters', 'requestBody', 'description', 'server']:
+            raise ValidationError('Invalid link object. Unknown field "{field}". See {url}'.format(
+                field=k,
+                url='https://swagger.io/specification/#linkObject'))
+
+        if k == 'operationRef' and type(v) is not str:
+            raise ValidationError('Invalid link object. "{0}" must be a str but was {1}'.format(k, type(v)))
+
+        if k == 'operationId' and type(v) is not str:
+            raise ValidationError('Invalid link object. "{0}" must be a str but was {1}'.format(k, type(v)))
+
+        if k == 'description' and type(v) is not str:
+            raise ValidationError('Invalid link object. "{0}" must be a str but was {1}'.format(k, type(v)))
+
         if k == 'server':
-            validate_servers_object(v)
+            validate_server_object(v)
 
 
 def validate_servers_object(server_object):
@@ -604,7 +795,7 @@ def validate_server_object(server_object):
             if k not in ['url', 'description', 'variables']:
                 raise ValidationError('Invalid server object. Unknown field "{field}". See {url}'.format(
                     field=k,
-                    url='http://swagger.io/specification/#serverObject'))
+                    url='https://swagger.io/specification/#serverObject'))
 
             if k == 'variables':
                 validate_server_variables_object(v)
@@ -613,13 +804,13 @@ def validate_server_object(server_object):
             if k == 'url':
                 if not validate_url(v):
                     raise ValidationError('Invalid url. See {url}'.format(
-                        url='http://swagger.io/specification/#serverObject'))
+                        url='https://swagger.io/specification/#serverObject'))
 
         if "url" not in server_object:
             raise ValidationError('Invalid server object. Missing field "url"')
     else:
         raise ValidationError('Invalid server object. See {url}'.format(
-            url='http://swagger.io/specification/#serverObject'
+            url='https://swagger.io/specification/#serverObject'
         ))
 
 
@@ -649,30 +840,48 @@ def validate_server_variables_object(server_variables_object):
         if k not in ['enum', 'default', 'description']:
             raise ValidationError('Invalid server variables object. Unknown field "{field}". See {url}'.format(
                 field=k,
-                url='http://swagger.io/specification/#headerObject'))
+                url='https://swagger.io/specification/#serverVariablesObject'))
 
         if k == 'enum':
             if isinstance(v, list):
                 if not all(isinstance(x, str) for x in v):
                     raise ValidationError(
                         'Invalid server variables object object. Each item of enum must be string'
-                        'See http://swagger.io/specification/#serverVariablesObject'
+                        'See https://swagger.io/specification/#serverVariablesObject'
                     )
             else:
                 raise ValidationError(
                     'Invalid server variables object object. Enum must be a list of strings'
-                    'See http://swagger.io/specification/#serverVariablesObject'
+                    'See https://swagger.io/specification/#serverVariablesObject'
                 )
 
     if 'default' not in server_variables_object:
         raise ValidationError(
             'Invalid server variables object object. Missing field "url"'
-            'See http://swagger.io/specification/#serverVariablesObject'
+            'See https://swagger.io/specification/#serverVariablesObject'
         )
 
 
+def validate_examples_object(example_object):
+    for k, v in example_object.items():
+        try:
+            validate_example_object(v)
+        except ValidationError:
+            validate_reference_object(v)
+
+
 def validate_example_object(example_object):
-    pass
+    for k, v in example_object.items():
+        if k not in ['summary', 'description', 'value', 'externalValue']:
+            raise ValidationError('Invalid example object. Unknown field "{field}". See {url}'.format(
+                field=k,
+                url='https://swagger.io/specification/#exampleObject'))
+
+        if k == 'summary' or k == 'description' or k == 'externalValue':
+            if not type(v) == str:
+                raise ValidationError('Invalid example object. "{0}" must be a str but was {1}'.format(k, type(v)))
+        if k == 'value':
+            continue
 
 
 def extract_swagger_path(path):
@@ -816,6 +1025,7 @@ def response(response_code, description=None, schema=None, no_content=False):
     :param no_content:
     :return:
     """
+
     def decorated(func):
         if "__response_code" in func.__dict__:
             func.__response_code.append(response_code)
@@ -824,11 +1034,11 @@ def response(response_code, description=None, schema=None, no_content=False):
 
         _description = description
         if not _description:
-            _description = sanitize_doc(func.__doc__.split('\n'))
+            _description = sanitize_doc(func.__doc__)
         if "__description" in func.__dict__:
-            func.__description.append(sanitize_doc(_description.split('\n')))
+            func.__description.append(sanitize_doc(_description))
         else:
-            func.__description = [sanitize_doc(_description.split('\n'))]
+            func.__description = [sanitize_doc(_description)]
 
         if "__schema" in func.__dict__:
             func.__schema.append(schema)
@@ -858,6 +1068,7 @@ def reorder_with(schema, as_list: bool = False, response_code=200, description=N
     :param description:
     :return:
     """
+
     def decorated(func):
         _schema = [schema] if as_list else schema
         if "__schema" in func.__dict__:
@@ -872,7 +1083,7 @@ def reorder_with(schema, as_list: bool = False, response_code=200, description=N
 
         _description = description
         if not _description:
-            _description = sanitize_doc(func.__doc__.split('\n'))
+            _description = sanitize_doc(func.__doc__)
         if "__description" in func.__dict__:
             func.__description.append(_description)
         else:
@@ -939,6 +1150,7 @@ def tags(*_tags):
     :param _tags:
     :return:
     """
+
     def decorated(func_or_class):
         klass = None
         function = None
@@ -967,12 +1179,10 @@ def reqparser(name, parser):
     """
 
     def decorated(func):
-
         func.__reqparser = {"name": name, "parser": parser}
 
         @wraps(func)
         def wrapper(self, *args, **kwargs):
-
             return func(self, *args, **kwargs)
 
         return wrapper
@@ -995,4 +1205,3 @@ def payload():
     :return:
     """
     return request.get_json()
-

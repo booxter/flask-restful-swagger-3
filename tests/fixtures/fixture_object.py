@@ -1,4 +1,4 @@
-def fixture_nested_obj():
+def nested_obj():
     return {
         'id': 1,
         'name': 'fake',
@@ -14,7 +14,7 @@ def fixture_nested_obj():
     }
 
 
-def fixture_bad_type_in_nested_obj():
+def bad_type_in_nested_obj():
     return {
         'id': 1,
         'name': 'fake',
@@ -29,19 +29,19 @@ def fixture_bad_type_in_nested_obj():
     }
 
 
-def fixture_enum_obj():
+def enum_obj():
     return {
         'my_choice': 'choice_1'
     }
 
 
-def fixture_enum_obj_not_in_choice():
+def enum_obj_not_in_choice():
     return {
         'my_choice': 'not_in_choice'
     }
 
 
-def fixture_obj_of_sub_schema():
+def obj_of_sub_schema():
     return {
         'id': 'my_id',
         'super_attribute': 'super',
@@ -50,7 +50,7 @@ def fixture_obj_of_sub_schema():
     }
 
 
-def fixture_expected_definition_of_sub_schema():
+def expected_definition_of_sub_schema():
     return {
         'properties': {
             'sub_attribute': {'type': 'string'},
@@ -62,7 +62,7 @@ def fixture_expected_definition_of_sub_schema():
     }
 
 
-def fixture_expected_example_of_sub_schema():
+def expected_example_of_sub_schema():
     return {
         'sub_attribute': 'string',
         'id': 'string',
@@ -71,7 +71,7 @@ def fixture_expected_example_of_sub_schema():
     }
 
 
-def fixture_object_with_array():
+def object_with_array():
     return {
         "id": 1,
         "name": "test",

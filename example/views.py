@@ -71,7 +71,7 @@ class GroupResource(Resource):
     added_groups = []
 
     @swagger.tags('groups')
-    @swagger.response(response_code=201, description='created group')
+    @swagger.response(response_code=201)
     @swagger.reqparser(name='GroupsModel', parser=post_parser)
     def post(self):
         """

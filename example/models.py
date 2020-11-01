@@ -32,6 +32,11 @@ class UserModel(SuperUserModel):
             'type': 'string',
             'enum': ['admin', 'regular'],
             'nullable': 'true'
+        },
+        'password': {
+            'type': 'string',
+            'format': 'password',
+            'load_only': 'true'
         }
     }
     required = ['name']
