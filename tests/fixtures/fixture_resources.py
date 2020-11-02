@@ -109,11 +109,15 @@ def user_resource():
             args = _parser.parse_args()
 
             name = args.get('name', 'somebody')
-            return user_model()(**{'id': user_id, 'name': name}), 200
+            return user_model()(**{'id': user_id, 'name': name, 'password': 'test'}), 200
 
         @swagger.response(204, description="No content", no_content=True)
         def delete(self, user_id):
             return f"User {user_id} deleted", 204
+
+        @swagger.expected(user_model())
+        def post(self):
+            pass
 
     return UserResource
 
@@ -134,16 +138,64 @@ def no_converter_resource():
 def bad_schema_resource_in_parameters():
     class BadSchemaResourceInParameters(Resource):
         @swagger.reorder_with(user_model(), response_code=200, description="Get users")
-        @swagger.parameter({
-                    'name': 'name',
-                    'description': 'User name',
-                    'in': 'query',
-                    'schema': 'string'
-                })
+        @swagger.parameters([
+            {
+                'name': 'name',
+                'description': 'User name',
+                'in': 'query',
+                'schema': 'string'
+            }
+        ])
+        @swagger.parameter(
+                    name='name',
+                    description='User name',
+                    _in='query',
+                    schema='string'
+                )
         def get(self, user_id, _parser):
             pass
 
     return BadSchemaResourceInParameters
+
+
+def bad_resource_parameter_type():
+    class BadResourceParameterType(Resource):
+        @swagger.reorder_with(user_model(), response_code=200, description="Get users")
+        @swagger.parameter(param="test")
+        def get(self, user_id, _parser):
+            pass
+
+    return BadResourceParameterType
+
+
+def bad_resource_parameters_type():
+    class BadResourceParametersType(Resource):
+        @swagger.reorder_with(user_model(), response_code=200, description="Get users")
+        @swagger.parameters({
+                'name': 'name',
+                'description': 'User name',
+                'in': 'query',
+                'schema': 'string'
+            })
+        def get(self, user_id, _parser):
+            pass
+
+    return BadResourceParametersType
+
+
+def bad_resource_parameters_in_is_path():
+    class BadResourceParametersIn(Resource):
+        @swagger.reorder_with(user_model(), response_code=200, description="Get users")
+        @swagger.parameter({
+                'name': 'name',
+                'description': 'User name',
+                'in': 'path',
+                'schema': 'string'
+            })
+        def get(self, user_id, _parser):
+            pass
+
+    return BadResourceParametersIn
 
 
 def entity_add_resource():
@@ -204,6 +256,8 @@ def p_resource():
     class PResource(Resource):
         @swagger.tags('User')
         @swagger.reorder_with(p_model(), response_code=201)
+        @swagger.response(400, description="bad request")
+        @swagger.response(500, description="internal server error")
         @swagger.parameters([
             {'in': 'query',
              'name': 'body',
@@ -221,6 +275,12 @@ def p_resource():
                 return {'message': e.args[0]}, 400
 
             return data, 201, {'Location': request.path + '/' + str(data['id'])}
+
+        @swagger.tags('User')
+        @swagger.reorder_list_with(p_model(), response_code=200)
+        def get(self):
+            """Get something"""
+            pass
 
     return PResource
 

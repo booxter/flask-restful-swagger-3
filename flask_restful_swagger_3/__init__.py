@@ -6,6 +6,7 @@ from flask import Blueprint, request, render_template, send_from_directory, curr
 from flask_restful import (Api as restful_Api, abort as flask_abort,
                            Resource as flask_Resource)
 
+from flask_restful_swagger_3.exceptions import SchemaAlreadyExist
 from flask_restful_swagger_3.swagger import (ValidationError, create_open_api_resource,
                                              add_parameters, validate_path_item_object,
                                              validate_components_object,
@@ -454,6 +455,8 @@ class RequestParserExtractor:
 
 
 def register_schema(target_class):
+    if target_class.__name__ in REGISTRY_SCHEMA:
+        raise SchemaAlreadyExist(target_class.__name__)
     REGISTRY_SCHEMA[target_class.__name__] = target_class
 
 
@@ -461,16 +464,15 @@ class Schema(dict):
     properties = None
 
     def __init_subclass__(cls, **kwargs):
-        if cls not in REGISTRY_SCHEMA:
-            register_schema(cls)
+        register_schema(cls)
         super().__init_subclass__(**kwargs)
         super_classes = cls.get_super_classes(cls)
         properties = {}
         if cls.properties:
+            if type(cls.properties) is not dict:
+                raise TypeError(f"attribute properties must be a dict, but was {type(cls.properties)}")
             properties.update(deepcopy(cls.properties))
         for super_class in super_classes:
-            if not hasattr(super_class, 'type'):
-                raise TypeError("You can inherit only schema of type 'object'")
             if super_class.type != 'object':
                 raise TypeError("You can inherit only schema of type 'object'")
             if cls.type != super_class.type:
@@ -489,6 +491,12 @@ class Schema(dict):
         if properties:
             cls.properties = properties
 
+        if hasattr(cls, 'type') and cls.type == 'object' and not cls.properties:
+            raise TypeError("Attribute properties cannot be None when schema type is object")
+
+        if cls.properties and not hasattr(cls, 'type'):
+            cls.type = 'object'
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -500,34 +508,32 @@ class Schema(dict):
                 if type(self.properties[k]) == type:
                     if self.properties[k].type == 'object':
                         self.properties[k](**v)
-                    prop = self.properties[k].definitions()
+                    self.prop = self.properties[k].definitions()
                 else:
-                    prop = self.properties[k]
+                    self.prop = self.properties[k]
 
-                nullable = False
-                if 'nullable' in prop:
-                    if prop['nullable'] not in ['true', 'false']:
-                        raise ValueError('\'nullable\' must be \'true\' or \'false\'')
-                    if prop['nullable'] == 'true':
-                        nullable = True
+                nullable = self.get_boolean_attribute('nullable')
+                load_only = self.get_boolean_attribute('load_only')
+                dump_only = self.get_boolean_attribute('dump_only')
+                if load_only and dump_only:
+                    raise TypeError('A value can\'t be load_only and dump_only in the same schema')
 
                 if nullable and v is None:
                     continue
 
-                type_ = prop.get('type', None)
-                format_ = prop.get('format', None)
-                load_only = prop.pop('load_only', None)
-                self.check_type(type_, format_, k, v)
+                type_ = self.prop.get('type', None)
+                format_ = self.prop.get('format', None)
+                self.check_type(type_, k, v)
 
-                if 'enum' in prop:
-                    if type(prop['enum']) not in [set, list, tuple]:
-                        raise TypeError(f"'enum' must be 'list', 'set' or 'tuple', but was {type(prop['enum'])}")
-                    for item in list(prop['enum']):
-                        self.check_type(type_, format_, 'enum', item)
-                    if v not in prop['enum']:
-                        raise ValueError(f"{k} must have {' or '.join(prop['enum'])} but have {v}")
+                if 'enum' in self.prop:
+                    if type(self.prop['enum']) not in [set, list, tuple]:
+                        raise TypeError(f"'enum' must be 'list', 'set' or 'tuple', but was {type(self.prop['enum'])}")
+                    for item in list(self.prop['enum']):
+                        self.check_type(type_, 'enum', item)
+                    if v not in self.prop['enum']:
+                        raise ValueError(f"{k} must have {' or '.join(self.prop['enum'])} but have {v}")
 
-                self.check_format(type_, format_, k, v)
+                self.check_format(type_, format_, v)
 
                 if load_only:
                     del self[k]
@@ -540,6 +546,16 @@ class Schema(dict):
                 if key not in kwargs:
                     raise ValueError('The attribute "{0}" is required'.format(key))
 
+    def get_boolean_attribute(self, attr):
+        _attr = False
+        if attr in self.prop:
+            if self.prop[attr] not in ['true', 'false']:
+                raise ValueError('"nullable" must be "true" or "false"')
+            if self.prop[attr] == 'true':
+                _attr = True
+
+        return _attr
+
     @staticmethod
     def get_super_classes(cls):
         return [
@@ -547,7 +563,7 @@ class Schema(dict):
             if schema_name != cls.__name__ and issubclass(cls, schema)
         ]
 
-    def check_type(self, type_, format_, key, value):
+    def check_type(self, type_, key, value):
         if type_:
             if type_ == 'array':
                 if not isinstance(value, list):
@@ -559,7 +575,7 @@ class Schema(dict):
                             cls(**v)
                     else:
                         for v in value:
-                            self.check_type(cls.type, format_,  key, v)
+                            self.check_type(cls.type,  key, v)
             if type_ == 'integer' and not isinstance(value, int):
                 raise ValueError(f'The attribute "{key}" must be an int, but was "{type(value)}"')
             if type_ == 'number' and not isinstance(value, int) and not isinstance(value, float):
@@ -570,7 +586,8 @@ class Schema(dict):
             if type_ == 'boolean' and not isinstance(value, bool):
                 raise ValueError(f'The attribute "{key}" must be a bool, but was "{type(value)}"')
 
-    def check_format(self, type_, format_, key, value):
+    @staticmethod
+    def check_format(type_, format_, value):
         validator = get_validate_format(type_, format_)
         if validator:
             validator().validate(value)
@@ -594,20 +611,35 @@ class Schema(dict):
     @classmethod
     def example(cls):
         items = dict(cls.__dict__.items())
-        if "properties" in items:
-            properties = dict(cls.__dict__.items())["properties"]
-            example = {}
-            if properties:
-                for k, v in properties.items():
-                    if type(v) is dict:
-                        val = v["type"]
-                        if v["type"] == "array":
-                            if "items" in v:
-                                val = [v["items"].example()]
-                    else:
-                        val = [] if v == "array" else v
-                    example.update({k: val})
-            return example
+        if "type" in items:
+            if items["type"] == "object":
+                return cls.__example_object(items)
+            else:
+                return cls.__example(items)
+
+    @staticmethod
+    def __example_object(items):
+        properties = items["properties"]
+        example = {}
+        for k, v in properties.items():
+            try:
+                load_only = 'load_only' in v and v['load_only'] == 'true'
+            except TypeError:
+                load_only = hasattr(v, 'load_only') and v.load_only == 'true'
+            try:
+                if load_only:
+                    continue
+                val = v["type"]
+                if v["type"] == "array":
+                    if "items" in v:
+                        val = [v["items"].example()]
+            except TypeError:
+                val = [] if v == "array" else v
+            example.update({k: val})
+        return example
+
+    @staticmethod
+    def __example(items):
         return items["type"]
 
 

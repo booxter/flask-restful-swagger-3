@@ -49,7 +49,7 @@ class TestSwagger:
         class String(Schema):
             type = 'string'
 
-        class Scheme(Schema):
+        class Scheme1(Schema):
             type = 'object'
             properties = {
                 'fake': {
@@ -57,10 +57,10 @@ class TestSwagger:
                 },
                 'fake2': String
             }
-        assert swagger.get_data_type(Scheme.array()) == str
+        assert swagger.get_data_type(Scheme1.array()) == str
 
     def test_get_parser_from_schema(self):
-        class Scheme(Schema):
+        class Scheme2(Schema):
             type = 'object'
             properties = {
                 'fake': {
@@ -71,8 +71,8 @@ class TestSwagger:
                 }
             }
 
-        parser_result = list(swagger.get_parser_from_schema({'schema': {'$ref': Scheme}}))
-        for name, parser in swagger.get_parser_from_schema({'schema': {'$ref': Scheme}}):
+        parser_result = list(swagger.get_parser_from_schema({'schema': {'$ref': Scheme2}}))
+        for name, parser in swagger.get_parser_from_schema({'schema': {'$ref': Scheme2}}):
             print(name)
             print(parser_result)
 
@@ -510,6 +510,19 @@ class TestSwagger:
         response_object['links'] = {"operationRef": 'my_ref'}
         assert swagger.validate_response_object(response_object) is None
 
+    def test_validate_response_object_with_headers(self, responses_object):
+        response_object = responses_object["4XX"]
+        response_object['headers'] = {
+            'X-Something-Bidule': {
+                "description": "Location of the new item",
+                "schema": {
+                    "type": "string"
+                }
+            },
+        }
+        response_object['links'] = {"operationRef": 'my_ref'}
+        assert swagger.validate_response_object(response_object) is None
+
     def test_validate_response_object_unknown_field(self, responses_object):
         response_object = responses_object["4XX"]
         response_object['unknown'] = 'unknown'
@@ -704,6 +717,9 @@ class TestSwagger:
         components_link_object['links']['UserRepositories']['description'] = 3
         with pytest.raises(swagger.ValidationError):
             assert swagger.validate_components_object(components_link_object) is None
+
+    def test_validate_components_callback_object(self, components_callback_object):
+        assert swagger.validate_components_object(components_callback_object) is None
 
     def test_validate_server_object(self, server_object):
         assert swagger.validate_server_object(server_object) is None

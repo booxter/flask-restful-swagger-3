@@ -1,3 +1,14 @@
+Version 0.4.4
+-------------
+
+Released 2020-11-02
+
+-  Fix schema load_only and dump_only and update example
+-  Fix some validation
+-  Update doc
+-  Update tests
+
+
 Version 0.4.3
 -------------
 

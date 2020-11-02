@@ -94,7 +94,7 @@ api.add_resource(UserItemResource, '/api/users/<int:user_id>')
 
 ## Parsing query parameters
 
-If a resource function contains the special argument `_parser`, any `query` type parameters in the
+If a resource has decorator ``swagger.parameters`` or ``swagger.parameter`` with `in` or `_in` equal `query`, the
 documentation will be automatically added to a reqparse parser and assigned to the `_parser` argument.
 
 ## Using models
@@ -118,9 +118,7 @@ class KeysModel(Schema):
         }
     }
 
-
 class UserModel(Schema):
-    type = 'object'
     properties = {
         'id': {
             'type': 'integer',
@@ -130,10 +128,26 @@ class UserModel(Schema):
             'type': 'string'
         },
         'mail': EmailModel,
-        'keys': KeysModel.array()
+        'keys': KeysModel.array(),
+        'user_type': {
+            'type': 'string',
+            'enum': ['admin', 'regular'],
+            'nullable': 'true'
+        },
+        'password': {
+            'type': 'string',
+            'format': 'password',
+            'load_only': 'true'
+        }
     }
     required = ['name']
 ```
+
+For each ``properties``, you can add ``nullable``, ``dump_only`` and ``load_only`` (look ``UserModel`` example):
+
+* ``nullable``: The property can be ``None`` (``null`` in json format)
+* ``dump_only``: The schema will raise an error if property is added
+* ``load_only``: The schema will not display the property
 
 ### SuperModel
 

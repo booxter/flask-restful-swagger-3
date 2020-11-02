@@ -349,7 +349,6 @@ def validate_contact_object(contact_object):
                 if not validate_email(v):
                     raise ValidationError('Invalid email. See {url}'.format(
                         url='https://swagger.io/specification/#contactObject'))
-                continue
 
 
 def validate_license_object(license_object):
@@ -364,10 +363,14 @@ def validate_license_object(license_object):
                 if not validate_url(v):
                     raise ValidationError('Invalid url. See {url}'.format(
                         url='https://swagger.io/specification/#licenseObject'))
-                continue
 
         if 'name' not in license_object:
             raise ValidationError('Invalid license object. Missing field "name"')
+
+
+def validate_callback_object(call_back_object):
+    for k, v in call_back_object.items():
+        validate_path_item_object(v)
 
 
 def validate_path_item_object(path_item_object):
@@ -480,8 +483,7 @@ def validate_responses_object(responses_object):
                 validate_reference_object(v)
             except ValidationError:
                 validate_response_object(v)
-            continue
-        if 99 < int(k) < 600:
+        elif 99 < int(k) < 600:
             try:
                 validate_reference_object(v)
             except ValidationError:
@@ -496,9 +498,10 @@ def validate_response_object(response_object):
         if k == 'headers':
             try:
                 validate_reference_object(v)
+                continue
             except ValidationError:
                 validate_headers_object(v)
-            continue
+                continue
         if k == 'content':
             validate_content_object(v)
             continue
@@ -701,12 +704,15 @@ def validate_components_object(definition_object):
 
         if k == "securitySchemes":
             validate_security_schemes_object(v)
+            continue
 
         if k == 'links':
             validate_links_object(v)
+            continue
 
         if k == 'callbacks':
-            validate_path_item_object(v)
+            validate_callback_object(v)
+            continue
 
 
 def validate_schemas_object(schema_object):
@@ -720,7 +726,6 @@ def validate_schema_object(schema_object):
     for k, v in schema_object.items():
         try:
             validate_reference_object(v)
-            continue
         except AttributeError:
             if k == 'required' and not isinstance(v, list):
                 raise ValidationError('Invalid schema object. "{0}" must be a list but was {1}'.format(k, type(v)))

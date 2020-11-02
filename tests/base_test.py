@@ -48,6 +48,22 @@ class BaseTestApi:
         cls.ctx.pop()
 
 
+class BaseTestApiNoContext:
+    app = None
+    api = None
+    client_app = None
+
+    @classmethod
+    def setup_class(cls):
+        app = Flask(__name__)
+        app.testing = True
+
+        cls.app = app
+        cls.api = Api(cls.app)
+        cls.api.add_resource(parse_resource(), '/parse')
+        cls.client_app = app.test_client()
+
+
 class BaseTestApiBlueprint:
     app = None
     api = None
@@ -92,7 +108,6 @@ class NotAuthorizeApi:
         cls.api = Api(cls.app)
         cls.api.add_resource(parse_resource(), '/parse')
         cls.api.add_resource(user_resource(), '/users/<int:user_id>')
-        cls.api.add_resource(entity_add_resource(), '/entities')
         cls.api.add_resource(p_resource(), '/api/users')
         cls.api.add_resource(one_resource(), '/some_data')
         cls.ctx = app.app_context()

@@ -138,9 +138,8 @@ Use add\_resource as usual.
 Parsing query parameters
 ------------------------
 
-If a resource function contains the special argument ``_parser``, any
-``query`` type parameters in the documentation will be automatically
-added to a reqparse parser and assigned to the ``_parser`` argument.
+If a resource has decorator ``swagger.parameters`` or ``swagger.parameter`` with ``in`` or ``_in`` equal ``query``, the
+documentation will be automatically added to a reqparse parser and assigned to the ``_parser`` argument.
 
 Using models
 ------------
@@ -167,7 +166,6 @@ Create a model by inheriting from ``flask_restful_swagger_3.Schema``
 
 
     class UserModel(Schema):
-        type = 'object'
         properties = {
             'id': {
                 'type': 'integer',
@@ -177,7 +175,17 @@ Create a model by inheriting from ``flask_restful_swagger_3.Schema``
                 'type': 'string'
             },
             'mail': EmailModel,
-            'keys': KeysModel.array()
+            'keys': KeysModel.array(),
+            'user_type': {
+                'type': 'string',
+                'enum': ['admin', 'regular'],
+                'nullable': 'true'
+            },
+            'password': {
+                'type': 'string',
+                'format': 'password',
+                'load_only': 'true'
+            }
         }
         required = ['name']
 

@@ -422,11 +422,70 @@ def components_link_object():
                         "enum": ['string', 'test', 'something'],
                         "default": "test",
                         "description": "the server"
-    }
+                    }
                 }
             },
             'RefUserRepositories': {
                 '$ref': "#/components/links/UserRepositories"
+            }
+        }
+    }
+
+
+def components_callback_object():
+    return {
+        'callbacks': {
+            'myFirstCallback': {
+                "servers": {
+                    "url": "https://development.gigantic-server.com/v1",
+                },
+                "post": {
+                    "tags": [
+                        "users"
+                    ],
+                    "responses": {
+                        "201": {
+                            "description": "Created user",
+                            "headers": {
+                                'X-Something-Bidule': {
+                                    "description": "Location of the new item",
+                                    "schema": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "$ref": "#/components/schemas/UserModel"
+                                    },
+                                    "example": {
+                                        "application/json": {
+                                            "id": 1
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                '$ref': "",
+                "parameters": [
+                    {
+                        "name": "body",
+                        "description": "Request body",
+                        "in": "query",
+                        "schema": {
+                            "$ref": "#/components/schemas/UserModel"
+                        },
+                        "required": True
+                    }
+                ],
+                'summary': "Add a user",
+                "description": "Adds a user",
+            },
+            'myFirstCallbackRef': {
+                '$ref': "#/components/callbacks/myFirstCallback"
             }
         }
     }

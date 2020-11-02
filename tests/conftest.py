@@ -48,6 +48,21 @@ def bad_schema_resource_in_parameters():
     return fixture_resources.bad_schema_resource_in_parameters()
 
 
+@pytest.fixture
+def bad_resource_parameter_type():
+    return fixture_resources.bad_resource_parameter_type
+
+
+@pytest.fixture
+def bad_resource_parameters_type():
+    return fixture_resources.bad_resource_parameters_type
+
+
+@pytest.fixture
+def bad_resource_parameters_in_is_path():
+    return fixture_resources.bad_resource_parameters_in_is_path
+
+
 # Schemas
 @pytest.fixture
 def schema_test_model():
@@ -246,6 +261,11 @@ def components_security_schemes_object():
 @pytest.fixture
 def components_link_object():
     return fixture_swagger.components_link_object()
+
+
+@pytest.fixture
+def components_callback_object():
+    return fixture_swagger.components_callback_object()
 
 
 @pytest.fixture

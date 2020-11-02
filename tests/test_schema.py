@@ -1,4 +1,5 @@
 import pytest
+from flask_restful_swagger_3.exceptions import SchemaAlreadyExist
 
 from flask_restful_swagger_3 import Schema
 
@@ -115,10 +116,9 @@ class TestSchema:
         with pytest.raises(TypeError):
             sub_schema_with_bad_super_schema()
 
-    def test_should_raise_error_when_create_sub_schema_with_super_schema_without_type(
+    def test_should_create_schema_when__super_schema_has_no_type(
             self, sub_schema_with_super_schema_without_type):
-        with pytest.raises(TypeError):
-            sub_schema_with_super_schema_without_type()
+        sub_schema_with_super_schema_without_type()
 
     def test_should_validate_array_schema_object_ok(self, schema_with_array, object_with_array):
         schema_with_array(**object_with_array)
@@ -207,14 +207,73 @@ class TestSchema:
                 'pass': {
                     'type': 'string',
                     'format': 'password',
-                    'load_only': True
+                    'load_only': 'true'
                 }
             }
         assert Password(**{'name': 'name', 'pass': 'password'}) == {'name': 'name'}
         assert Password.definitions() == {
             'properties': {
                 'name': {'type': 'string'},
-                'pass': {'format': 'password', 'type': 'string'}
+                'pass': {'format': 'password', 'type': 'string', 'load_only': 'true'}
             },
             'type': 'object'
         }
+
+    def test_schema_raise_error_if_schema_already_exists(self):
+        class NewSchema(Schema):
+            type = 'object'
+            properties = {
+                'name': {
+                    'type': 'string',
+                },
+                'pass': {
+                    'type': 'string',
+                    'format': 'password',
+                    'load_only': 'true'
+                }
+            }
+        with pytest.raises(SchemaAlreadyExist) as e:
+            class NewSchema(Schema):
+                pass
+
+        assert str(e.value.message) == "You must not create 2 or more schemas with the same name:" \
+                                       " NewSchema already exists"
+
+    def test_schema_raise_error_when_properties_is_not_dict(self):
+        with pytest.raises(TypeError):
+            class BadPropertiesSchema(Schema):
+                type = 'object'
+                properties = 'name'
+
+    def test_schema_raise_error_when_properties_is_null_and_type_is_object(self):
+        with pytest.raises(TypeError):
+            class MissingPropertiesSchema(Schema):
+                type = 'object'
+
+    def test_schema_raise_error_when_item_is_load_only_and_dump_only(self):
+        class SchemaDumpOnlyAndLoadOnly(Schema):
+            type = 'object'
+            properties = {
+                'name': {
+                    'type': 'string',
+                    'load_only': 'true',
+                    'dump_only': 'true'
+                }
+            }
+
+        with pytest.raises(TypeError):
+            SchemaDumpOnlyAndLoadOnly(**{'name': 'test'})
+
+        class SchemaTypeDumpOnlyAndLoadOnly(Schema):
+            type = 'string'
+            load_only = 'true'
+            dump_only = 'true'
+
+        class SecondSchemaDumpOnlyAndLoadOnly(Schema):
+            type = 'object'
+            properties = {
+                'name': SchemaTypeDumpOnlyAndLoadOnly
+            }
+
+        with pytest.raises(TypeError):
+            SecondSchemaDumpOnlyAndLoadOnly(**{'name': 'test'})
