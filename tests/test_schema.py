@@ -277,3 +277,83 @@ class TestSchema:
 
         with pytest.raises(TypeError):
             SecondSchemaDumpOnlyAndLoadOnly(**{'name': 'test'})
+
+    def test_schema_valid_when_load_only(self, user_model):
+        user = {
+            'id': 1,
+            'name': 'test',
+            'password': 'password'
+        }
+        user_result = {
+            'id': 1,
+            'name': 'test'
+        }
+        assert user_model(**user) == user_result
+
+    def test_schema_valid_when_load_only_and_null(self, user_model):
+        user = {
+            'id': 1,
+            'name': 'test',
+            'password': None
+        }
+        user_result = {
+            'id': 1,
+            'name': 'test'
+        }
+        assert user_model(**user) == user_result
+
+    def test_schema_valid_when_load_only_and_true(self):
+        class SchemaLoadOnlyAndTrue(Schema):
+            type = 'object'
+            properties = {
+                'id': {
+                    'type': 'int'
+                },
+                'name': {
+                    'type': 'string',
+                },
+                'value': {
+                    'type': 'boolean',
+                    'load_only': 'true'
+                }
+            }
+
+        user = {
+            'id': 1,
+            'name': 'test',
+            'value': True
+        }
+
+        user_result = {
+            'id': 1,
+            'name': 'test',
+        }
+        assert SchemaLoadOnlyAndTrue(**user) == user_result
+
+    def test_schema_valid_when_load_only_and_false(self):
+        class SchemaLoadOnlyAndFalse(Schema):
+            type = 'object'
+            properties = {
+                'id': {
+                    'type': 'int'
+                },
+                'name': {
+                    'type': 'string',
+                },
+                'value': {
+                    'type': 'boolean',
+                    'load_only': 'true'
+                }
+            }
+
+        user = {
+            'id': 1,
+            'name': 'test',
+            'value': False
+        }
+
+        user_result = {
+            'id': 1,
+            'name': 'test',
+        }
+        assert SchemaLoadOnlyAndFalse(**user) == user_result

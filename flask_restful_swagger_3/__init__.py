@@ -518,22 +518,21 @@ class Schema(dict):
                 if load_only and dump_only:
                     raise TypeError('A value can\'t be load_only and dump_only in the same schema')
 
-                if nullable and v is None:
-                    continue
-
                 type_ = self.prop.get('type', None)
                 format_ = self.prop.get('format', None)
-                self.check_type(type_, k, v)
 
-                if 'enum' in self.prop:
-                    if type(self.prop['enum']) not in [set, list, tuple]:
-                        raise TypeError(f"'enum' must be 'list', 'set' or 'tuple', but was {type(self.prop['enum'])}")
-                    for item in list(self.prop['enum']):
-                        self.check_type(type_, 'enum', item)
-                    if v not in self.prop['enum']:
-                        raise ValueError(f"{k} must have {' or '.join(self.prop['enum'])} but have {v}")
+                print(self.__class__.__name__, k, v, nullable and v is None)
+                if not (nullable and v is None):
+                    self.check_type(type_, k, v)
+                    if 'enum' in self.prop:
+                        if type(self.prop['enum']) not in [set, list, tuple]:
+                            raise TypeError(f"'enum' must be 'list', 'set' or 'tuple', but was {type(self.prop['enum'])}")
+                        for item in list(self.prop['enum']):
+                            self.check_type(type_, 'enum', item)
+                        if v not in self.prop['enum']:
+                            raise ValueError(f"{k} must have {' or '.join(self.prop['enum'])} but have {v}")
 
-                self.check_format(type_, format_, v)
+                    self.check_format(type_, format_, v)
 
                 if load_only:
                     del self[k]
@@ -550,7 +549,7 @@ class Schema(dict):
         _attr = False
         if attr in self.prop:
             if self.prop[attr] not in ['true', 'false']:
-                raise ValueError('"nullable" must be "true" or "false"')
+                raise ValueError(f'"{attr}" must be "true" or "false"')
             if self.prop[attr] == 'true':
                 _attr = True
 

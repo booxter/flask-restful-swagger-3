@@ -43,6 +43,7 @@ class UserModel(Schema):
         },
         'password': {
             'type': 'string',
+            'nullable': 'true',
             'load_only': 'true'
         }
     }
