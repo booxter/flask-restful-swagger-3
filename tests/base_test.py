@@ -35,7 +35,7 @@ class BaseTestApi:
         cls.app = app
         cls.api = Api(cls.app)
         cls.api.add_resource(parse_resource(), '/parse')
-        cls.api.add_resource(user_resource(), '/users/<int:user_id>')
+        cls.api.add_resource(user_resource(), '/users/<int:user_id>', '/users')
         cls.api.add_resource(entity_add_resource(), '/entities')
         cls.api.add_resource(p_resource(), '/api/users')
         cls.api.add_resource(one_resource(), '/some_data')

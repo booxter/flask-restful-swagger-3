@@ -1,5 +1,6 @@
 import os
 import json
+import inspect
 from copy import deepcopy
 
 from flask import Blueprint, request, render_template, send_from_directory, current_app
@@ -9,9 +10,11 @@ from flask_restful import (Api as restful_Api, abort as flask_abort,
 from flask_restful_swagger_3.exceptions import SchemaAlreadyExist
 from flask_restful_swagger_3.swagger import (ValidationError, create_open_api_resource,
                                              add_parameters, validate_path_item_object,
-                                             validate_components_object,
+                                             validate_components_object, validate_open_api_object,
                                              extract_swagger_path, _auth as auth,
-                                             slash_join, TypeSwagger, REGISTRY_SCHEMA)
+                                             slash_join, REGISTRY_SCHEMA)
+
+from flask_restful_swagger_3.constants import TypeSwagger
 
 from flask_restful_swagger_3.swagger_format import get_validate_format
 
@@ -83,6 +86,7 @@ class Api(restful_Api):
 
     def add_resource(self, resource, *args, endpoint=None, **kwargs):
         schemas = {}
+        examples = {}
         urls = {}
 
         for method in [m.lower() for m in resource.methods]:
@@ -97,9 +101,11 @@ class Api(restful_Api):
                 reqparser = f.__dict__.get("__reqparser", [])
                 tags = f.__dict__.get("__tags", [])
                 no_content_list = f.__dict__.get("__no_content", [])
+                custom_example_list = f.__dict__.get("__custom_example", [])
 
                 assert (
-                    len(response_code_list) == len(description_list) == len(model_list) == len(no_content_list)
+                    len(response_code_list) == len(description_list) == len(model_list) ==
+                    len(no_content_list) == len(custom_example_list)
                 )
 
                 if reqparser:
@@ -118,15 +124,17 @@ class Api(restful_Api):
 
                 for result in result_model:
                     if result:
-                        schemas.update(result["schema"])
+                        schemas.update(result["reusable_schema"])
+                        examples.update(result["reusable_example"])
 
                 req_ref = None
-                req_example = None
+                req_ref_example = None
                 if request_body:
-                    req_schema, req_body = self.__build_request_body(request_body)
+                    req_schema, req_example, req_body = self.__build_request_body(request_body)
                     __method[method].update(req_body)
                     if req_schema:
                         schemas.update(req_schema)
+                        examples.update(req_example)
 
                     req_result_model = self.__build_model(request_body['schema'] if request_body else None)
                     req_ref = (
@@ -134,8 +142,9 @@ class Api(restful_Api):
                             if req_result_model
                             else None
                         )
-                    req_example = (
-                        req_result_model["example"]
+
+                    req_ref_example = (
+                        req_result_model["reference_example"]
                         if req_result_model
                         else None
                     )
@@ -146,13 +155,16 @@ class Api(restful_Api):
                         if result_model[index]
                         else None
                     )
-                    example_schema = (
-                        result_model[index]["example"] if result_model[index] else None
+                    ref_example = (
+                        result_model[index]["reference_example"]
+                        if result_model[index]
+                        else None
                     )
                     response = self.__build_responses(
                         response_code,
                         ref=ref or req_ref,
-                        example_schema=example_schema or req_example,
+                        custom_example=custom_example_list[index],
+                        examples=ref_example or req_ref_example,
                         description=description_list[index],
                         no_content=no_content_list[index]
                     )
@@ -185,12 +197,20 @@ class Api(restful_Api):
 
         self.__open_api_object["paths"].update(urls)
 
-        validate_components_object(schemas)
-
         if "schemas" in self.__open_api_object["components"]:
             self.__open_api_object["components"]["schemas"].update(schemas)
         else:
             self.__open_api_object["components"]["schemas"] = schemas
+
+        if 'examples' in self.__open_api_object["components"]:
+            self.__open_api_object["components"]["examples"].update(examples)
+        else:
+            self.__open_api_object["components"]["examples"] = examples
+
+        if 'externalDocs' in self.__open_api_object and not self.__open_api_object['externalDocs']:
+            del self.__open_api_object['externalDocs']
+
+        validate_open_api_object(self.open_api_object)
 
         super().add_resource(resource, *args, endpoint=endpoint, **kwargs)
 
@@ -213,22 +233,27 @@ class Api(restful_Api):
 
             definition = schema[0].definitions() if is_list else schema.definitions()
             reference = schema[0].reference() if is_list else schema.reference()
-            _schema = eval(json.dumps(definition, cls=DefinitionEncoder))
+            _schema = json.loads(json.dumps(definition, cls=DefinitionEncoder))
 
             example = (
-                [eval(json.dumps(schema[0].example(), cls=ExampleEncoder))]
+                [json.loads(json.dumps(schema[0].example(), cls=ExampleEncoder))]
                 if is_list
-                else eval(json.dumps(schema.example(), cls=ExampleEncoder))
+                else json.loads(json.dumps(schema.example(), cls=ExampleEncoder))
             )
 
+            schema_example_name = schema[0].reference_example_name() if is_list else schema.reference_example_name()
+            reference_example = schema[0].reference_example() if is_list else schema.reference_example()
+
             return {
-                "schema": {schema_name: _schema},
+                "reusable_schema": {schema_name: _schema},
                 "reference": reference,
-                "example": example,
+                "reference_example": {schema_example_name: reference_example},
+                "reusable_example": {schema_example_name: {'value': example}},
             }
 
     @staticmethod
-    def __build_responses(response_code, description="", ref=None, example_schema=None, no_content=False):
+    def __build_responses(response_code, description="", ref=None,
+                          custom_example=None, examples=None, no_content=False):
         responses = {response_code: {"content": {"application/json": {}}}}
 
         if description:
@@ -238,9 +263,13 @@ class Api(restful_Api):
             _schema = {"schema": ref}
             responses[response_code]["content"]["application/json"].update(_schema)
 
-        if example_schema:
-            _example = {"example": example_schema}
-            responses[response_code]["content"]["application/json"].update(_example)
+        if custom_example:
+            custom_example = {"example": custom_example}
+            responses[response_code]["content"]["application/json"].update(custom_example)
+
+        if examples:
+            _examples = {"examples": examples}
+            responses[response_code]["content"]["application/json"].update(_examples)
 
         if no_content:
             del responses[response_code]["content"]
@@ -255,7 +284,8 @@ class Api(restful_Api):
             converter_variable = param.split(":")
             if len(converter_variable) > 2:
                 raise ValueError(
-                    f"You must define one converter for a variable_name, if you want several converter don't mention any '{param}'"
+                    f"You must define one converter for a variable_name, "
+                    f"if you want several converter don't mention any '{':'.join(converter_variable[:-1])}'"
                 )
 
             try:
@@ -309,15 +339,17 @@ class Api(restful_Api):
         if schema:
             model = self.__build_model(schema)
             reference = {"schema": model["reference"]}
+            reference_example = {"examples": model['reference_example']}
 
-            result["requestBody"]["content"]["application/json"] = reference
+            result["requestBody"]["content"]["application/json"].update(reference)
+            result["requestBody"]["content"]["application/json"].update(reference_example)
 
-            return model["schema"], result
+            return model["reusable_schema"], model["reusable_example"],  result
 
-        return None, result
+        return None, None, result
 
     @property
-    def open_api_json(self):
+    def open_api_object(self):
         return self.__open_api_object
 
 
@@ -466,23 +498,26 @@ class Schema(dict):
     def __init_subclass__(cls, **kwargs):
         register_schema(cls)
         super().__init_subclass__(**kwargs)
-        super_classes = cls.get_super_classes(cls)
+        super_classes = cls.get_super_classes()
         properties = {}
         if cls.properties:
             if type(cls.properties) is not dict:
-                raise TypeError(f"attribute properties must be a dict, but was {type(cls.properties)}")
-            properties.update(deepcopy(cls.properties))
+                raise TypeError(f"Attribute 'properties' must be a 'dict', but was {type(cls.properties)}")
+            properties = cls.update_properties(properties, cls.properties)
+        if hasattr(cls, 'required'):
+            if type(cls.required) not in [list, set, tuple]:
+                raise TypeError(f"Attribute 'required' must be 'list', 'set' or 'tuple', but was {type(cls.required)}")
         for super_class in super_classes:
             if super_class.type != 'object':
                 raise TypeError("You can inherit only schema of type 'object'")
             if cls.type != super_class.type:
-                raise TypeError(f"You can't add type to '{cls.__name__}'" +
+                raise TypeError(f"You can't add type to '{cls.__name__}' " +
                                 f"because it inherits of type of '{super_class.__name__}'")
 
             cls.type = super_class.type
 
             if super_class.properties:
-                properties.update(deepcopy(super_class.properties))
+                properties = cls.update_properties(super_class.properties, properties)
 
             if hasattr(super_class, 'required'):
                 if hasattr(cls, 'required'):
@@ -491,8 +526,7 @@ class Schema(dict):
         if properties:
             cls.properties = properties
 
-        if hasattr(cls, 'type') and cls.type == 'object' and not cls.properties:
-            raise TypeError("Attribute properties cannot be None when schema type is object")
+        cls.check_schema_type()
 
         if cls.properties and not hasattr(cls, 'type'):
             cls.type = 'object'
@@ -521,7 +555,6 @@ class Schema(dict):
                 type_ = self.prop.get('type', None)
                 format_ = self.prop.get('format', None)
 
-                print(self.__class__.__name__, k, v, nullable and v is None)
                 if not (nullable and v is None):
                     self.check_type(type_, k, v)
                     if 'enum' in self.prop:
@@ -541,6 +574,7 @@ class Schema(dict):
                 self[k] = v
 
         if hasattr(self, 'required'):
+            self.required = list(self.required)
             for key in self.required:
                 if key not in kwargs:
                     raise ValueError('The attribute "{0}" is required'.format(key))
@@ -548,14 +582,64 @@ class Schema(dict):
     def get_boolean_attribute(self, attr):
         _attr = False
         if attr in self.prop:
-            if self.prop[attr] not in ['true', 'false']:
-                raise ValueError(f'"{attr}" must be "true" or "false"')
-            if self.prop[attr] == 'true':
+            if self.prop[attr] not in ['true', 'false', True, False]:
+                raise ValueError(f'"{attr}" must be "true", "false", True, False')
+            if self.prop[attr] == 'true' or self.prop[attr]:
                 _attr = True
 
         return _attr
 
+    @classmethod
+    def check_schema_type(cls):
+        if hasattr(cls, 'type'):
+            if cls.type == 'object' and not cls.properties:
+                raise TypeError("Attribute properties cannot be None when schema type is object")
+            if cls.type == 'array':
+                if (not type(cls.items) is dict) or (inspect.isclass(cls.items) and not issubclass(cls.items, Schema)):
+                    raise TypeError(f"Attribute items must be of type dict or a subclass of Schema,"
+                                    f" but was {type(cls.items)}")
+
     @staticmethod
+    def update_properties(original, new):
+        if not original:
+            return new
+        updated = deepcopy(original)
+        try:
+            new_ = new.definitions()
+        except AttributeError:
+            new_ = new
+        for prop, dict_or_schema in new_.items():
+            try:
+                new_prop = new_[prop].definitions()
+            except AttributeError:
+                new_prop = new_[prop]
+            if prop in updated:
+                try:
+                    _dict_or_schema = dict_or_schema.definitions()
+                except AttributeError:
+                    _dict_or_schema = dict_or_schema
+                for k, v in _dict_or_schema.items():
+                    try:
+                        updated_prop = updated[prop].definitions()
+                    except AttributeError:
+                        updated_prop = updated[prop]
+                    if k in updated_prop.keys():
+                        if k == 'type' and updated_prop[k] != v:
+                            raise TypeError("You can't alter type of properties in sub schema")
+
+                try:
+                    if updated[prop].type == 'object':
+                        updated[prop] = updated[prop].update_properties(updated[prop].properties, new[prop].properties)
+                    else:
+                        updated[prop] = new_prop
+                except AttributeError:
+                    updated[prop].update(new_prop)
+            else:
+                updated[prop] = new_prop
+
+        return updated
+
+    @classmethod
     def get_super_classes(cls):
         return [
             schema for schema_name, schema in REGISTRY_SCHEMA.items()
@@ -593,7 +677,15 @@ class Schema(dict):
 
     @classmethod
     def reference(cls):
-        return {'$ref': '#/components/schemas/{0}'.format(cls.__name__)}
+        return {'$ref': f'#/components/schemas/{cls.__name__}'}
+
+    @classmethod
+    def reference_example_name(cls):
+        return f'Example{cls.__name__}'
+
+    @classmethod
+    def reference_example(cls):
+        return {'$ref': f'#/components/examples/{cls.reference_example_name()}'}
 
     @classmethod
     def definitions(cls):
@@ -622,16 +714,20 @@ class Schema(dict):
         example = {}
         for k, v in properties.items():
             try:
-                load_only = 'load_only' in v and v['load_only'] == 'true'
+                load_only = 'load_only' in v and v['load_only']
             except TypeError:
-                load_only = hasattr(v, 'load_only') and v.load_only == 'true'
+                load_only = hasattr(v, 'load_only') and v.load_only
             try:
                 if load_only:
                     continue
                 val = v["type"]
                 if v["type"] == "array":
                     if "items" in v:
-                        val = [v["items"].example()]
+                        try:
+                            val = [v["items"].example()]
+                        except AttributeError:
+                            val = [v["items"]["type"]]
+
             except TypeError:
                 val = [] if v == "array" else v
             example.update({k: val})
@@ -639,6 +735,11 @@ class Schema(dict):
 
     @staticmethod
     def __example(items):
+        if items["type"] == 'array':
+            try:
+                return [items.example()]
+            except AttributeError:
+                return [items['items']["type"]]
         return items["type"]
 
 

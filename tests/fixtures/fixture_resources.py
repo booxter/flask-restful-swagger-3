@@ -115,9 +115,10 @@ def user_resource():
         def delete(self, user_id):
             return f"User {user_id} deleted", 204
 
+        @swagger.response(201, description="post")
         @swagger.expected(user_model())
         def post(self):
-            pass
+            return swagger.payload(), 201
 
     return UserResource
 
@@ -220,7 +221,7 @@ def entity_add_resource():
             args = self.post_parser.parse_args()
 
             name = args.get('name', 'somebody')
-            return user_model()(**{'id': id, 'name': name}), 200
+            return user_model()(**{'id': args.get('id', 2), 'name': name}), 200
 
     return EntityAddResource
 
