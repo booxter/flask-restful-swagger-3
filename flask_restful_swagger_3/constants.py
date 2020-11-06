@@ -11,7 +11,9 @@ parameter_object_list = ['name', 'in', 'description', 'required', 'deprecated', 
                          'style', 'explode', 'allowReserved', 'schema', 'example', 'examples', 'content', 'matrix',
                          'label', 'form', 'simple', 'spaceDelimited', 'pipeDelimited', 'deepObject']
 
-responses_object_list = [status.value for status in HTTPStatus]
+http_status_enum = [status for status in HTTPStatus]
+http_status_value = [status.value for status in HTTPStatus]
+responses_object_list = list(set(http_status_enum + http_status_value))
 
 operation_object_list = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace']
 

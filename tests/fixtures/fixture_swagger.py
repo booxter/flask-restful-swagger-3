@@ -1,3 +1,6 @@
+from http import HTTPStatus
+
+
 def open_api_object():
     return {
         "openapi": "3.0.2",
@@ -558,6 +561,19 @@ def parameter_object():
 def responses_object():
     return {
         "default": {
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "$ref": "#/components/schemas/ErrorSchema"
+                    },
+                    "example": {
+                        "message": "string"
+                    }
+                }
+            },
+            "description": "Bad request"
+        },
+        HTTPStatus.BAD_REQUEST: {
             "content": {
                 "application/json": {
                     "schema": {

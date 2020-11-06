@@ -2,6 +2,7 @@ import collections
 import re
 import inspect
 from functools import wraps
+from http import HTTPStatus
 
 from flask import request
 from flask_restful import Resource, reqparse, inputs
@@ -545,15 +546,18 @@ def validate_map_responses_object(map_responses_object):
 
 def validate_responses_object(responses_object):
     for k, v in responses_object.items():
-        if type(k) not in [int, str]:
+        if type(k) not in [int, str, HTTPStatus]:
             raise ValidationError(f'Invalid responses object. '
-                                  f'"{k}" must a "int" (HttpStatusCode) or a "str" (default), but was {type(k)}')
+                                  f'"{k}" must be a "int" (HttpStatusCode), a "HTTPStatus enum" or a "str" (default), '
+                                  f'but was {type(k)}')
         try:
             k = int(k)
         except ValueError:
             pass
+
         if k not in constants.responses_object_list and k != 'default':
-            raise ValidationError(f'Invalid responses object. it must be a HttpStatusCode, or "default" but was {k}')
+            raise ValidationError(f'Invalid responses object. it must be a HttpStatusCode, a HTTPStatus enum '
+                                  f'or "default" but was {k}')
         try:
             validate_response_object(v)
         except ValidationError:

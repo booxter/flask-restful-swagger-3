@@ -449,7 +449,7 @@ class TestSwagger:
     def test_validate_responses_object(self, responses_object):
         assert swagger.validate_responses_object(responses_object) is None
 
-    def test_validate_responses_object_not_int_or_str(self, responses_object):
+    def test_validate_responses_object_not_int_or_str_or_http_status(self, responses_object):
         responses_object[(2, 3)] = {}
         with pytest.raises(swagger.ValidationError):
             assert swagger.validate_responses_object(responses_object) is None

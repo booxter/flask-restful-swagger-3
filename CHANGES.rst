@@ -3,6 +3,7 @@ Version 0.4.4
 
 Released 2020-11-02
 
+-  Fix http code in responses, allow HTTPStatus enum
 -  Fix inherited properties of sub model
 -  Allow use of custom example
 -  Add Example of schema in components and use $ref (result see in swagger json)
