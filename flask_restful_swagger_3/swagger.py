@@ -465,7 +465,6 @@ def validate_operation_object(operation_object):
                 continue
             raise ValidationError('Invalid operation object. "{0}" must be a bool but was "{1}"', k, type(v))
         if k in ['externalDocs']:
-            print("validate_operation_object", v)
             validate_external_documentation_object(v)  # to check
             continue
         if k in ['parameters']:
@@ -1141,11 +1140,12 @@ def parameter(param={}, **kwargs):
     return parameters(params)
 
 
-def response(response_code, description=None, schema=None, no_content=False, example=None):
+def response(response_code, description=None, summary=None, schema=None, no_content=False, example=None):
     """
     Decorator to add a response to the url
     :param response_code:
     :param description:
+    :param summary:
     :param schema:
     :param no_content:
     :param example:
@@ -1165,6 +1165,11 @@ def response(response_code, description=None, schema=None, no_content=False, exa
             func.__description.append(sanitize_doc(_description))
         else:
             func.__description = [sanitize_doc(_description)]
+
+        if "__summary" in func.__dict__:
+            func.__summary.append(summary)
+        else:
+            func.__summary = [summary]
 
         if "__schema" in func.__dict__:
             func.__schema.append(schema)
@@ -1190,14 +1195,15 @@ def response(response_code, description=None, schema=None, no_content=False, exa
     return decorated
 
 
-def reorder_with(schema, as_list: bool = False, response_code=200, description=None, example=None):
+def reorder_with(schema, as_list: bool = False, response_code=200, description=None, summary=None, example=None):
     """
     Decorator to apply a schema to a response
     :param schema:
     :param as_list:
     :param response_code:
     :param description:
-    :param example
+    :param example:
+    :param summary:
     :return:
     """
 
@@ -1221,6 +1227,11 @@ def reorder_with(schema, as_list: bool = False, response_code=200, description=N
         else:
             func.__description = [_description]
 
+        if "__summary" in func.__dict__:
+            func.__summary.append(summary)
+        else:
+            func.__summary = [summary]
+
         if "__no_content" in func.__dict__:
             func.__no_content.append(False)
         else:
@@ -1242,16 +1253,17 @@ def reorder_with(schema, as_list: bool = False, response_code=200, description=N
     return decorated
 
 
-def reorder_list_with(schema, response_code=200, description=None, example=None):
+def reorder_list_with(schema, response_code=200, description=None, summary=None, example=None):
     """
     Same as reoder_with with as_list = True
     :param schema:
     :param response_code:
     :param description
+    :param summary
     :param example
     :return:
     """
-    return reorder_with(schema, True, response_code, description, example)
+    return reorder_with(schema, True, response_code, description, summary, example)
 
 
 def __tags_method(func, *_tags):
@@ -1278,7 +1290,7 @@ def __tags_decorated_class(cls, *_tags):
     :return:
     """
     for name, m in inspect.getmembers(cls, lambda x: inspect.isfunction(x) or inspect.ismethod(x)):
-        if name in ['get', 'post', 'patch', 'put', 'delete']:
+        if name in constants.operation_object_list:
             setattr(cls, name, __tags_method(m, *_tags))
     return cls
 

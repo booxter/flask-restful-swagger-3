@@ -289,7 +289,7 @@ def p_resource():
 def one_resource():
     @swagger.tags('Some data')
     class OneResource(Resource):
-        @swagger.response(200, description="Some data")
+        @swagger.response(200, description="Some data", summary="some summary")
         def get(self):
             return {'data': 'some data'}, 200
 

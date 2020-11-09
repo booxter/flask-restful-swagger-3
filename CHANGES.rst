@@ -3,6 +3,7 @@ Version 0.4.4
 
 Released 2020-11-02
 
+-  Add summary to response
 -  Fix http code in responses, allow HTTPStatus enum
 -  Fix inherited properties of sub model
 -  Allow use of custom example

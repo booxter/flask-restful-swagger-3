@@ -102,10 +102,11 @@ class Api(restful_Api):
                 tags = f.__dict__.get("__tags", [])
                 no_content_list = f.__dict__.get("__no_content", [])
                 custom_example_list = f.__dict__.get("__custom_example", [])
+                summary_list = f.__dict__.get("__summary", [])
 
                 assert (
                     len(response_code_list) == len(description_list) == len(model_list) ==
-                    len(no_content_list) == len(custom_example_list)
+                    len(no_content_list) == len(custom_example_list) == len(summary_list)
                 )
 
                 if reqparser:
@@ -188,6 +189,14 @@ class Api(restful_Api):
                             __method[method]["responses"].update(response)
                         else:
                             __method[method]["responses"] = response
+
+                        if "summary" not in __method[method]:
+                            if summary_list[index]:
+                                __method[method]["summary"] = summary_list[index]
+
+                            elif len(tags) > 0:
+                                __method[method]["summary"] = f"Operations on {', '.join(tags).lower()}"
+
                         validate_path_item_object(__method)
 
                         if converted_url in urls:
@@ -771,6 +780,8 @@ def get_swagger_blueprint(
     """
 
     add_parameters(swagger_object, kwargs)
+    validate_open_api_object(swagger_object)
+
     app_name = kwargs.get('title', 'Swagger UI')
     swagger_blueprint_name = kwargs.get('swagger_blueprint_name', 'swagger')
 
