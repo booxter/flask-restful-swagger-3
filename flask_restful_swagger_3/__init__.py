@@ -86,7 +86,7 @@ class Api(restful_Api):
 
     def add_resource(self, resource, *args, endpoint=None, **kwargs):
         schemas = {}
-        examples = {}
+        # examples = {}
         urls = {}
 
         for method in [m.lower() for m in resource.methods]:
@@ -126,16 +126,14 @@ class Api(restful_Api):
                 for result in result_model:
                     if result:
                         schemas.update(result["reusable_schema"])
-                        examples.update(result["reusable_example"])
 
                 req_ref = None
-                req_ref_example = None
+                req_example = None
                 if request_body:
-                    req_schema, req_example, req_body = self.__build_request_body(request_body)
+                    req_schema, req_body = self.__build_request_body(request_body)
                     __method[method].update(req_body)
                     if req_schema:
                         schemas.update(req_schema)
-                        examples.update(req_example)
 
                     req_result_model = self.__build_model(request_body['schema'] if request_body else None)
                     req_ref = (
@@ -144,8 +142,8 @@ class Api(restful_Api):
                             else None
                         )
 
-                    req_ref_example = (
-                        req_result_model["reference_example"]
+                    req_example = (
+                        req_result_model["example"]
                         if req_result_model
                         else None
                     )
@@ -156,8 +154,8 @@ class Api(restful_Api):
                         if result_model[index]
                         else None
                     )
-                    ref_example = (
-                        result_model[index]["reference_example"]
+                    example_schema = (
+                        result_model[index]["example"]
                         if result_model[index]
                         else None
                     )
@@ -165,7 +163,7 @@ class Api(restful_Api):
                         response_code,
                         ref=ref or req_ref,
                         custom_example=custom_example_list[index],
-                        examples=ref_example or req_ref_example,
+                        example=example_schema or req_example,
                         description=description_list[index],
                         no_content=no_content_list[index]
                     )
@@ -211,11 +209,6 @@ class Api(restful_Api):
         else:
             self.__open_api_object["components"]["schemas"] = schemas
 
-        if 'examples' in self.__open_api_object["components"]:
-            self.__open_api_object["components"]["examples"].update(examples)
-        else:
-            self.__open_api_object["components"]["examples"] = examples
-
         if 'externalDocs' in self.__open_api_object and not self.__open_api_object['externalDocs']:
             del self.__open_api_object['externalDocs']
 
@@ -258,11 +251,12 @@ class Api(restful_Api):
                 "reference": reference,
                 "reference_example": {schema_example_name: reference_example},
                 "reusable_example": {schema_example_name: {'value': example}},
+                "example": example
             }
 
     @staticmethod
     def __build_responses(response_code, description="", ref=None,
-                          custom_example=None, examples=None, no_content=False):
+                          custom_example=None, example=None, no_content=False):
         responses = {response_code: {"content": {"application/json": {}}}}
 
         if description:
@@ -276,9 +270,9 @@ class Api(restful_Api):
             custom_example = {"example": custom_example}
             responses[response_code]["content"]["application/json"].update(custom_example)
 
-        if examples:
-            _examples = {"examples": examples}
-            responses[response_code]["content"]["application/json"].update(_examples)
+        if example:
+            _example = {"example": example}
+            responses[response_code]["content"]["application/json"].update(_example)
 
         if no_content:
             del responses[response_code]["content"]
@@ -348,14 +342,12 @@ class Api(restful_Api):
         if schema:
             model = self.__build_model(schema)
             reference = {"schema": model["reference"]}
-            reference_example = {"examples": model['reference_example']}
 
             result["requestBody"]["content"]["application/json"].update(reference)
-            result["requestBody"]["content"]["application/json"].update(reference_example)
 
-            return model["reusable_schema"], model["reusable_example"],  result
+            return model["reusable_schema"],  result
 
-        return None, None, result
+        return None, result
 
     @property
     def open_api_object(self):
@@ -381,7 +373,6 @@ class RequestParserExtractor:
         if "parser" not in reqparser:
             raise ValidationError("parser must be define in reqparser")
         return self._get_reqparse_args(reqparser)
-        # return self._extract_schemas(operation)
 
     def _get_reqparse_args(self, reqparser):
         """
@@ -568,7 +559,8 @@ class Schema(dict):
                     self.check_type(type_, k, v)
                     if 'enum' in self.prop:
                         if type(self.prop['enum']) not in [set, list, tuple]:
-                            raise TypeError(f"'enum' must be 'list', 'set' or 'tuple', but was {type(self.prop['enum'])}")
+                            raise TypeError(f"'enum' must be 'list', 'set' or 'tuple',"
+                                            f"but was {type(self.prop['enum'])}")
                         for item in list(self.prop['enum']):
                             self.check_type(type_, 'enum', item)
                         if v not in self.prop['enum']:

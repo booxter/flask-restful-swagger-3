@@ -114,3 +114,9 @@ class ProductResource(Resource):
         products = list(map(lambda product: ProductSchema(**product), list_of_products))
 
         return products, 200
+
+    @swagger.response(201)
+    @swagger.expected(ProductSchema, required=True)
+    def post(self):
+        """Add new product"""
+        return {}, 201

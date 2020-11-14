@@ -7,7 +7,6 @@ Released 2020-11-02
 -  Fix http code in responses, allow HTTPStatus enum
 -  Fix inherited properties of sub model
 -  Allow use of custom example
--  Add Example of schema in components and use $ref (result see in swagger json)
 -  Delete externalDocs from __open_api_object if empty
 -  Fix schema load_only and dump_only and update example
 -  Fix some validation
