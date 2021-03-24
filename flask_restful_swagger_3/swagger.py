@@ -2,11 +2,15 @@ import collections
 import re
 import inspect
 from functools import wraps
+from http import HTTPStatus
 
 from flask import request
 from flask_restful import Resource, reqparse, inputs
+from flask_restful_swagger_3 import constants
 
 REGISTRY_SCHEMA = {}
+
+components_security_schemes = None
 
 
 class ValidationError(ValueError):
@@ -32,6 +36,7 @@ def create_open_api_resource(swagger_object):
         def get(self):
             swagger_doc = {}
             # filter keys with empty values
+
             for k, v in swagger_object.items():
                 if v or k == 'paths':
                     if k == 'paths':
@@ -58,21 +63,6 @@ def create_open_api_resource(swagger_object):
             return swagger_doc
 
     return SwaggerEndpoint
-
-
-class TypeSwagger:
-    bool = "boolean"
-    str = "string"
-    float = "number"
-    int = "integer"
-    bin = "binary"
-    list = "array"
-    dict = "object"
-
-    @classmethod
-    def get_type(cls, _type):
-        if _type in cls.__dict__:
-            return cls.__dict__[_type]
 
 
 def set_nested(d, key_spec, value):
@@ -315,9 +305,55 @@ def get_parser(params):
     return parser
 
 
+def validate_open_api_object(open_api_object):
+    for k, v in open_api_object.items():
+        if k not in constants.open_api_object_list:
+            raise ValidationError('Invalid open api object. Unknown field "{field}". See {url}'.format(
+                field=k,
+                url='https://swagger.io/specification/#OpenAPIObject'))
+
+        if k == 'openapi':
+            if type(v) is not str:
+                raise ValidationError('Invalid open api object. "{0}" must be a str but was {1}'.format(k, type(v)))
+
+        if k == 'info':
+            validate_info_object(v)
+            continue
+
+        if k == 'servers':
+            validate_servers_object(v)
+            continue
+
+        if k == 'paths':
+            validate_paths_object(v)
+            continue
+
+        if k == 'components':
+            validate_components_object(v)
+            continue
+
+        if k == 'security':
+            validate_security(v)
+
+        if k == 'tags':
+            validate_tags(v)
+
+        if k == 'externalDocs':
+            validate_external_documentation_object(v)
+
+    if 'openapi' not in open_api_object:
+        raise ValidationError('Invalid open api object. Missing field "openapi"')
+
+    if 'info' not in open_api_object:
+        raise ValidationError('Invalid open api object. Missing field "info"')
+
+    if 'paths' not in open_api_object:
+        raise ValidationError('Invalid open api object. Missing field "paths"')
+
+
 def validate_info_object(info_object):
     for k, v in info_object.items():
-        if k not in ['title', 'description', 'termsOfService', 'contact', 'license', 'version']:
+        if k not in constants.info_object_list:
             raise ValidationError('Invalid info object. Unknown field "{field}". See {url}'.format(
                 field=k,
                 url='https://swagger.io/specification/#infoObject'))
@@ -340,7 +376,7 @@ def validate_info_object(info_object):
 def validate_contact_object(contact_object):
     if contact_object:
         for k, v in contact_object.items():
-            if k not in ['name', 'url', 'email']:
+            if k not in constants.contact_object_list:
                 raise ValidationError('Invalid contact object. Unknown field "{field}". See {url}'.format(
                     field=k,
                     url='https://swagger.io/specification/#contactObject'))
@@ -349,13 +385,12 @@ def validate_contact_object(contact_object):
                 if not validate_email(v):
                     raise ValidationError('Invalid email. See {url}'.format(
                         url='https://swagger.io/specification/#contactObject'))
-                continue
 
 
 def validate_license_object(license_object):
     if license_object:
         for k, v in license_object.items():
-            if k not in ['name', 'url']:
+            if k not in constants.license_object_list:
                 raise ValidationError('Invalid license object. Unknown field "{field}". See {url}'.format(
                     field=k,
                     url='https://swagger.io/specification/#licenseObject'))
@@ -364,19 +399,33 @@ def validate_license_object(license_object):
                 if not validate_url(v):
                     raise ValidationError('Invalid url. See {url}'.format(
                         url='https://swagger.io/specification/#licenseObject'))
-                continue
 
         if 'name' not in license_object:
             raise ValidationError('Invalid license object. Missing field "name"')
 
 
+def validate_callback_object(call_back_object):
+    for k, v in call_back_object.items():
+        validate_path_item_object(v)
+
+
+def validate_paths_object(paths_object):
+    for k, v in paths_object.items():
+        if type(k) is not str:
+            raise ValidationError(f'Invalid paths object. "{k}" must be a str but was "{type(v)}"')
+        if not k.startswith('/'):
+            raise ValidationError(f'Invalid paths object. "{k}" must start with a leading slash')
+        if k.endswith('/'):
+            raise ValidationError(f'Invalid paths object. "{k}" must not have an ending slash')
+        validate_path_item_object(v)
+
+
 def validate_path_item_object(path_item_object):
     """Checks if the passed object is valid according to https://swagger.io/specification/#pathItemObject"""
-
     for k, v in path_item_object.items():
         if k == '$ref':
             continue
-        if k in ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace']:
+        if k in constants.operation_object_list:
             validate_operation_object(v)
             continue
         if k == 'servers':
@@ -426,7 +475,7 @@ def validate_operation_object(operation_object):
             validate_responses_object(v)
             continue
         if k in ['security']:
-            validate_security_requirement_object(v)
+            validate_security(v)
             continue
         raise ValidationError('Invalid operation object. Unknown field "{field}". See {url}'.format(
             field=k,
@@ -435,8 +484,8 @@ def validate_operation_object(operation_object):
         raise ValidationError('Invalid operation object. Missing field "responses"')
 
 
-def validate_parameters_object(parameter_object):
-    for k, v in parameter_object.items():
+def validate_map_parameter_object(map_parameter_object):
+    for k, v in map_parameter_object.items():
         try:
             validate_parameter_object(v)
         except ValidationError:
@@ -445,9 +494,7 @@ def validate_parameters_object(parameter_object):
 
 def validate_parameter_object(parameter_object):
     for k, v in parameter_object.items():
-        if k not in ['name', 'in', 'description', 'required', 'deprecated', 'allowEmptyValue', 'style', 'explode',
-                     'allowReserved', 'schema', 'example', 'examples', 'content', 'matrix', 'label', 'form',
-                     'simple', 'spaceDelimited', 'pipeDelimited', 'deepObject']:
+        if k not in constants.parameter_object_list:
             raise ValidationError('Invalid parameter object. Unknown field "{field}". See {url}'.format(
                 field=k,
                 url='https://swagger.io/specification/#parameterObject'))
@@ -464,29 +511,56 @@ def validate_parameter_object(parameter_object):
         validate_schema_object(parameter_object['schema'])
 
 
-def validate_reference_object(parameter_object):
-    if len(parameter_object.keys()) > 1 or '$ref' not in parameter_object:
+def validate_reference_object(reference_object):
+    if len(reference_object.keys()) > 1 or '$ref' not in reference_object:
         raise ValidationError('Invalid reference object. It may only contain key "$ref"')
 
 
 def validate_external_documentation_object(external_documentation_object):
-    pass
+    for k, v in external_documentation_object.items():
+        if k not in constants.external_doc_object_list:
+            raise ValidationError('Invalid external documentation object. Unknown field "{field}". See {url}'.format(
+                field=k,
+                url='https://swagger.io/specification/#externalDocumentationObject'))
+
+        if k == 'description':
+            if not type(v) == str:
+                raise ValidationError('Invalid external documentation object.'
+                                      ' "{0}" must be a str but was {1}'.format(k, type(v)))
+
+        if k == 'url':
+            validate_url(v)
+
+    if 'url' not in external_documentation_object:
+        raise ValidationError('Invalid external documentation object. Missing field "url"')
+
+
+def validate_map_responses_object(map_responses_object):
+    for k, v in map_responses_object.items():
+        try:
+            validate_reference_object(v)
+        except ValidationError:
+            validate_responses_object(v)
 
 
 def validate_responses_object(responses_object):
     for k, v in responses_object.items():
-        if k in ["1XX", "2XX", "3XX", "4XX", "5XX", "default"]:
-            try:
-                validate_reference_object(v)
-            except ValidationError:
-                validate_response_object(v)
-            continue
-        if 99 < int(k) < 600:
-            try:
-                validate_reference_object(v)
-            except ValidationError:
-                validate_response_object(v)
-                continue
+        if type(k) not in [int, str, HTTPStatus]:
+            raise ValidationError(f'Invalid responses object. '
+                                  f'"{k}" must be a "int" (HttpStatusCode), a "HTTPStatus enum" or a "str" (default), '
+                                  f'but was {type(k)}')
+        try:
+            k = int(k)
+        except ValueError:
+            pass
+
+        if k not in constants.responses_object_list and k != 'default':
+            raise ValidationError(f'Invalid responses object. it must be a HttpStatusCode, a HTTPStatus enum '
+                                  f'or "default" but was {k}')
+        try:
+            validate_response_object(v)
+        except ValidationError:
+            validate_reference_object(v)
 
 
 def validate_response_object(response_object):
@@ -496,11 +570,12 @@ def validate_response_object(response_object):
         if k == 'headers':
             try:
                 validate_reference_object(v)
+                continue
             except ValidationError:
-                validate_headers_object(v)
-            continue
+                validate_map_header_object(v)
+                continue
         if k == 'content':
-            validate_content_object(v)
+            validate_map_media_type_object(v)
             continue
         if k == "links":
             validate_link_object(v)
@@ -512,8 +587,8 @@ def validate_response_object(response_object):
         raise ValidationError('Invalid response object. Missing field "description"')
 
 
-def validate_request_bodies_object(request_body_object):
-    for k, v in request_body_object.items():
+def validate_map_request_body_object(map_request_body_object):
+    for k, v in map_request_body_object.items():
         try:
             validate_request_body_object(v)
         except ValidationError:
@@ -528,21 +603,21 @@ def validate_request_body_object(request_body_object):
             if isinstance(v, bool):
                 continue
         if k in ['content']:
-            validate_content_object(v)
+            validate_map_media_type_object(v)
             continue
 
     if 'content' not in request_body_object:
         raise ValidationError('Invalid request body object. Missing field "content"')
 
 
-def validate_content_object(content_object):
-    for k, v in content_object.items():
-        if re.match(r'(.*)/(.*)', k):
+def validate_map_media_type_object(map_media_type_object):
+    for k, v in map_media_type_object.items():
+        if validate_media_type(k):
             validate_media_type_object(v)
             continue
         raise ValidationError(
             'Invalid content object, the field must match the following pattern ("application/json", "*/*" ...").'
-            '. See https://swagger.io/specification/#contentObject'
+            '. See https://swagger.io/specification/#mediaTypeObject'
         )
 
 
@@ -555,36 +630,66 @@ def validate_media_type_object(media_type_object):
             continue
 
         if k == "examples":
-            validate_examples_object(v)
+            validate_map_example_object(v)
             continue
 
 
+def validate_security(securities):
+    if type(securities) is not list:
+        raise ValidationError(f'Invalid operation object. "security" must be a list but was {type(securities)}')
+    for security in securities:
+        validate_security_requirement_object(security)
+
+
 def validate_security_requirement_object(security_requirement_object):
-    pass
+    global components_security_schemes
+    if not components_security_schemes:
+        raise ValidationError("Each property of security requirement object must correspond "
+                              "to a security scheme declared in the Security Schemes under the Components Object, "
+                              "but the Security Schemes is not declared. "
+                              "See https://swagger.io/specification/#SecurityRequirementObject")
+    for k, v in security_requirement_object.items():
+        if type(v) is not list:
+            components_security_schemes = None
+            raise ValidationError(f'Invalid security requirement object. '
+                                  f'"{k}" must be a list, but was {type(v)}')
+        if k not in components_security_schemes:
+            components_security_schemes = None
+            raise ValidationError("Each property of security requirement object must correspond "
+                                  "to a security scheme declared in the Security Schemes under the Components Object, "
+                                  "See https://swagger.io/specification/#SecurityRequirementObject")
+        _type = components_security_schemes[k].get('type', None)
+        if _type not in ['oauth2', 'openIdConnect'] and len(v) > 0:
+            components_security_schemes = None
+            raise ValidationError(f'Invalid security requirement object. '
+                                  f'"{k}" must be empty except for "oauth2", "openIdConnect"')
+
+    components_security_schemes = None
 
 
-def validate_security_schemes_object(security_scheme_object):
-    for k, v in security_scheme_object.items():
+def validate_map_security_scheme_object(map_security_scheme_object):
+    for k, v in map_security_scheme_object.items():
         try:
             validate_security_scheme_object(v)
         except ValidationError:
             validate_reference_object(v)
 
+    global components_security_schemes
+    components_security_schemes = map_security_scheme_object
+
 
 def validate_security_scheme_object(security_scheme_object):
-    scheme_choices = ['basic', 'bearer', 'digest', 'HOBA', 'mutual',
-                      'negotiate', 'oauth', 'SCRAM-SHA-1', 'SCRAM-SHA-256', 'vapid']
     for k, v in security_scheme_object.items():
-        if k not in ['type', 'description', 'name', 'in', 'scheme', 'bearerFormat', 'flows', 'openIdConnectUrl']:
-            raise ValidationError('Invalid parameter object. Unknown field "{field}". See {url}'.format(
+        if k not in constants.security_scheme_list:
+            raise ValidationError('Invalid security scheme object. Unknown field "{field}". See {url}'.format(
                 field=k,
-                url='https://swagger.io/specification/#securitySchemeObject'))
+                url='https://swagger.io/specification/#SecuritySchemeObject'))
 
     if 'type' not in security_scheme_object:
         raise ValidationError('Invalid security scheme object. Missing field "type"')
     _type = security_scheme_object['type']
-    if _type not in ["apiKey", "http", "oauth2", "openIdConnect"]:
-        raise ValidationError('"type" must have "apiKey", "http", "oauth2" or "openIdConnect"')
+    if _type not in constants.security_scheme_object_type_list:
+        raise ValidationError(f'"type" must be one of {", ".join(constants.security_scheme_object_type_list)}')
     if _type == 'apiKey':
         if 'name' not in security_scheme_object:
             raise ValidationError('Invalid security scheme object. Missing field "name" when type is "apiKey"')
@@ -594,9 +699,10 @@ def validate_security_scheme_object(security_scheme_object):
         if 'scheme' not in security_scheme_object:
             raise ValidationError('Invalid security scheme object. Missing field "scheme" when type is "http"')
         scheme = security_scheme_object['scheme']
-        if scheme not in scheme_choices:
+        if scheme not in constants.security_scheme_object_scheme_list:
             raise ValidationError(
-                f'Invalid security scheme object. "scheme" must be one of {", ".join(scheme_choices)} ')
+                f'Invalid security scheme object. '
+                f'"scheme" must be one of {", ".join(constants.security_scheme_object_scheme_list)} ')
     if _type == 'oauth2':
         if 'flows' not in security_scheme_object:
             raise ValidationError('Invalid security scheme object. Missing field "flows" when type is "oauth2"')
@@ -612,7 +718,7 @@ def validate_security_scheme_object(security_scheme_object):
 
 def validate_oauth_flows_object(oauth_flows_object):
     for k, v in oauth_flows_object.items():
-        if k not in ['implicit', 'password', 'clientCredentials', 'authorizationCode']:
+        if k not in constants.oauth_flows_object_list:
             raise ValidationError('Invalid oauth flows object. Unknown field "{field}". See {url}'.format(
                 field=k,
                 url='https://swagger.io/specification/#OAuthFlowsObject'))
@@ -632,7 +738,7 @@ def validate_oauth_flows_object(oauth_flows_object):
 
 def _validate_oauth_flows_object(key, oauth_flows_object):
     for k, v in oauth_flows_object.items():
-        if k not in ['authorizationUrl', 'tokenUrl', 'refreshUrl', 'scopes']:
+        if k not in constants.oauth_flows_object_sub_level_list:
             raise ValidationError('Invalid oauth flows object. Unknown field "{field}". See {url}'.format(
                 field=k,
                 url='https://swagger.io/specification/#OAuthFlowsObject'))
@@ -673,44 +779,50 @@ def check_token_url(oauth_flows_object):
             url='https://swagger.io/specification/#OAuthFlowsObject'))
 
 
-def validate_components_object(definition_object):
-    for k, v in definition_object.items():
+def validate_components_object(components_object):
+    for k, v in components_object.items():
+        if k not in constants.components_object_list:
+            raise ValidationError('Invalid components object. Unknown field "{field}". See {url}'.format(
+                field=k,
+                url='https://swagger.io/specification/#ComponentsObject'))
         if k == "schemas":
-            validate_schemas_object(v)
+            validate_map_schema_object(v)
             continue
 
         if k == "responses":
-            validate_responses_object(v)
+            validate_map_responses_object(v)
             continue
 
         if k == "parameters":
-            validate_parameters_object(v)
+            validate_map_parameter_object(v)
             continue
 
         if k == "examples":
-            validate_examples_object(v)
+            validate_map_example_object(v)
             continue
 
         if k == "requestBodies":
-            validate_request_bodies_object(v)
+            validate_map_request_body_object(v)
             continue
 
         if k == "headers":
-            validate_headers_object(v)
+            validate_map_header_object(v)
             continue
 
         if k == "securitySchemes":
-            validate_security_schemes_object(v)
+            validate_map_security_scheme_object(v)
+            continue
 
         if k == 'links':
-            validate_links_object(v)
+            validate_map_link_object(v)
+            continue
 
         if k == 'callbacks':
-            validate_path_item_object(v)
+            validate_callback_object(v)
 
 
-def validate_schemas_object(schema_object):
-    for k, v in schema_object.items():
+def validate_map_schema_object(map_schema_object):
+    for k, v in map_schema_object.items():
         if 'properties' in v:
             continue
         validate_schema_object(v)
@@ -720,40 +832,37 @@ def validate_schema_object(schema_object):
     for k, v in schema_object.items():
         try:
             validate_reference_object(v)
-            continue
         except AttributeError:
             if k == 'required' and not isinstance(v, list):
                 raise ValidationError('Invalid schema object. "{0}" must be a list but was {1}'.format(k, type(v)))
 
 
-def validate_headers_object(headers_object):
-    for k, v in headers_object.items():
+def validate_map_header_object(map_header_object):
+    for k, v in map_header_object.items():
         try:
             validate_header_object(v)
         except ValidationError:
             validate_reference_object(v)
 
 
-def validate_header_object(headers_object):
-    for k, v in headers_object.items():
-        if k not in ['name', 'in', 'description', 'required', 'deprecated', 'allowEmptyValue', 'style', 'explode',
-                     'allowReserved', 'schema', 'example', 'examples', 'content', 'matrix', 'label', 'form',
-                     'simple', 'spaceDelimited', 'pipeDelimited', 'deepObject']:
-            raise ValidationError('Invalid headers object. Unknown field "{field}". See {url}'.format(
+def validate_header_object(header_object):
+    for k, v in header_object.items():
+        if k not in constants.headers_object_list:
+            raise ValidationError('Invalid header object. Unknown field "{field}". See {url}'.format(
                 field=k,
-                url='https://swagger.io/specification/#headerObject'))
+                url='https://swagger.io/specification/#HeaderObject'))
         if k == 'name':
-            raise ValidationError('"name" must not be specified. See https://swagger.io/specification/#headerObject')
+            raise ValidationError('"name" must not be specified. See https://swagger.io/specification/#HeaderObject')
         if k == 'in':
-            raise ValidationError('"in" must not be specified. See https://swagger.io/specification/#headerObject')
+            raise ValidationError('"in" must not be specified. See https://swagger.io/specification/#HeaderObject')
 
         if k == 'schema':
-            validate_schema_object(headers_object['schema'])
+            validate_schema_object(header_object['schema'])
             continue
 
 
-def validate_links_object(link_object):
-    for k, v in link_object.items():
+def validate_map_link_object(map_link_object):
+    for k, v in map_link_object.items():
         try:
             validate_link_object(v)
         except ValidationError:
@@ -762,7 +871,7 @@ def validate_links_object(link_object):
 
 def validate_link_object(link_object):
     for k, v in link_object.items():
-        if k not in ['operationRef', 'operationId', 'parameters', 'requestBody', 'description', 'server']:
+        if k not in constants.link_object_list:
             raise ValidationError('Invalid link object. Unknown field "{field}". See {url}'.format(
                 field=k,
                 url='https://swagger.io/specification/#linkObject'))
@@ -780,22 +889,20 @@ def validate_link_object(link_object):
             validate_server_object(v)
 
 
-def validate_servers_object(server_object):
-    if isinstance(server_object, list):
-        for server in server_object:
-            validate_server_object(server)
-
-    else:
+def validate_servers_object(servers_object):
+    if type(servers_object) is not list:
+        raise ValidationError('Invalid server object. servers must be a list but was {0}'.format(type(servers_object)))
+    for server_object in servers_object:
         validate_server_object(server_object)
 
 
 def validate_server_object(server_object):
     if isinstance(server_object, dict):
         for k, v in server_object.items():
-            if k not in ['url', 'description', 'variables']:
+            if k not in constants.server_object_list:
                 raise ValidationError('Invalid server object. Unknown field "{field}". See {url}'.format(
                     field=k,
-                    url='https://swagger.io/specification/#serverObject'))
+                    url='https://swagger.io/specification/#ServerObject'))
 
             if k == 'variables':
                 validate_server_variables_object(v)
@@ -804,84 +911,101 @@ def validate_server_object(server_object):
             if k == 'url':
                 if not validate_url(v):
                     raise ValidationError('Invalid url. See {url}'.format(
-                        url='https://swagger.io/specification/#serverObject'))
+                        url='https://swagger.io/specification/#ServerObject'))
 
         if "url" not in server_object:
             raise ValidationError('Invalid server object. Missing field "url"')
     else:
         raise ValidationError('Invalid server object. See {url}'.format(
-            url='https://swagger.io/specification/#serverObject'
+            url='https://swagger.io/specification/#ServerObject'
         ))
-
-
-def validate_url(url):
-    url_regex = re.compile(
-        r'^(?:http|ftp)s?://'  # http:// or https://
-        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'  # domain...
-        r'localhost|'  # localhost...
-        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ...or ip
-        r'(?::\d+)?'  # optional port
-        r'(?:/?|[/?]\S+)$', re.IGNORECASE)
-
-    return re.match(url_regex, url) is not None
-
-
-def validate_email(email):
-    email_regex = re.compile(
-        r"(^[-!#$%&'*+/=?^_`{}|~0-9A-Z]+(\.[-!#$%&'*+/=?^_`{}|~0-9A-Z]+)*"  # dot-atom
-        r'|^"([\001-\010\013\014\016-\037!#-\[\]-\177]|\\[\001-011\013\014\016-\177])*"'  # quoted-string
-        r')@(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?$', re.IGNORECASE)  # domain
-
-    return re.match(email_regex, email) is not None
 
 
 def validate_server_variables_object(server_variables_object):
     for k, v in server_variables_object.items():
-        if k not in ['enum', 'default', 'description']:
+        if k not in constants.server_variables_object_list:
             raise ValidationError('Invalid server variables object. Unknown field "{field}". See {url}'.format(
                 field=k,
-                url='https://swagger.io/specification/#serverVariablesObject'))
+                url='https://swagger.io/specification/#ServerVariablesObject'))
 
         if k == 'enum':
             if isinstance(v, list):
                 if not all(isinstance(x, str) for x in v):
                     raise ValidationError(
                         'Invalid server variables object object. Each item of enum must be string'
-                        'See https://swagger.io/specification/#serverVariablesObject'
+                        'See https://swagger.io/specification/#ServerVariablesObject'
                     )
             else:
                 raise ValidationError(
                     'Invalid server variables object object. Enum must be a list of strings'
-                    'See https://swagger.io/specification/#serverVariablesObject'
+                    'See https://swagger.io/specification/#ServerVariablesObject'
                 )
 
     if 'default' not in server_variables_object:
         raise ValidationError(
             'Invalid server variables object object. Missing field "url"'
-            'See https://swagger.io/specification/#serverVariablesObject'
+            'See https://swagger.io/specification/#ServerVariablesObject'
         )
 
 
-def validate_examples_object(example_object):
-    for k, v in example_object.items():
+def validate_map_example_object(map_example_object):
+    for k, v in map_example_object.items():
         try:
-            validate_example_object(v)
-        except ValidationError:
             validate_reference_object(v)
+        except ValidationError:
+            validate_example_object(v)
 
 
 def validate_example_object(example_object):
     for k, v in example_object.items():
-        if k not in ['summary', 'description', 'value', 'externalValue']:
+        if k not in constants.example_object_list:
             raise ValidationError('Invalid example object. Unknown field "{field}". See {url}'.format(
                 field=k,
-                url='https://swagger.io/specification/#exampleObject'))
+                url='https://swagger.io/specification/#ExampleObject'))
+
+        if k == 'value':
+            continue
 
         if k == 'summary' or k == 'description' or k == 'externalValue':
             if not type(v) == str:
                 raise ValidationError('Invalid example object. "{0}" must be a str but was {1}'.format(k, type(v)))
-        if k == 'value':
-            continue
+
+
+def validate_tags(tag_list):
+    if type(tag_list) is not list:
+        raise ValidationError(f'Invalid tags object. "tags" must be a list but was {type(tag_list)}')
+    for tag in tag_list:
+        validate_tag_object(tag)
+
+
+def validate_tag_object(tag_object):
+    for k, v in tag_object.items():
+        if k not in constants.tag_object_list:
+            raise ValidationError('Invalid tag object. Unknown field "{field}". See {url}'.format(
+                field=k,
+                url='https://swagger.io/specification/#TagObject'))
+
+        if k == 'name' or k == 'description':
+            if not type(v) == str:
+                raise ValidationError('Invalid tag object. "{0}" must be a str but was {1}'.format(k, type(v)))
+
+        if k == 'externalDocs':
+            validate_external_documentation_object(v)
+
+    if 'name' not in tag_object:
+        raise ValidationError('Invalid tag object. Missing field "name"')
+
+
+def validate_url(url):
+    return re.match(constants.Regex.url, url) is not None
+
+
+def validate_email(email):
+    return re.match(constants.Regex.email, email) is not None
+
+
+def validate_media_type(media_type):
+    return re.match(constants.Regex.media_type, media_type) is not None
 
 
 def extract_swagger_path(path):
@@ -891,7 +1015,7 @@ def extract_swagger_path(path):
     And this /<string(length=2):lang_code>/<string:id>/<float:probability>
     to this: /{lang_code}/{id}/{probability}
     """
-    return re.sub("<(?:[^:]+:)?([^>]+)>", "{\\1}", path), re.findall("<(.*?)>", path)
+    return re.sub(constants.Regex.path, "{\\1}", path), re.findall("<(.*?)>", path)
 
 
 def sanitize_doc(comment):
@@ -1016,13 +1140,15 @@ def parameter(param={}, **kwargs):
     return parameters(params)
 
 
-def response(response_code, description=None, schema=None, no_content=False):
+def response(response_code, description=None, summary=None, schema=None, no_content=False, example=None):
     """
     Decorator to add a response to the url
     :param response_code:
     :param description:
+    :param summary:
     :param schema:
     :param no_content:
+    :param example:
     :return:
     """
 
@@ -1040,6 +1166,11 @@ def response(response_code, description=None, schema=None, no_content=False):
         else:
             func.__description = [sanitize_doc(_description)]
 
+        if "__summary" in func.__dict__:
+            func.__summary.append(summary)
+        else:
+            func.__summary = [summary]
+
         if "__schema" in func.__dict__:
             func.__schema.append(schema)
         else:
@@ -1050,6 +1181,11 @@ def response(response_code, description=None, schema=None, no_content=False):
         else:
             func.__no_content = [no_content]
 
+        if "__custom_example" in func.__dict__:
+            func.__custom_example.append(example)
+        else:
+            func.__custom_example = [example]
+
         @wraps(func)
         def wrapper(self, *args, **kwargs):
             return func(self, *args, **kwargs)
@@ -1059,13 +1195,15 @@ def response(response_code, description=None, schema=None, no_content=False):
     return decorated
 
 
-def reorder_with(schema, as_list: bool = False, response_code=200, description=None):
+def reorder_with(schema, as_list: bool = False, response_code=200, description=None, summary=None, example=None):
     """
     Decorator to apply a schema to a response
     :param schema:
     :param as_list:
     :param response_code:
     :param description:
+    :param example:
+    :param summary:
     :return:
     """
 
@@ -1089,10 +1227,21 @@ def reorder_with(schema, as_list: bool = False, response_code=200, description=N
         else:
             func.__description = [_description]
 
+        if "__summary" in func.__dict__:
+            func.__summary.append(summary)
+        else:
+            func.__summary = [summary]
+
         if "__no_content" in func.__dict__:
             func.__no_content.append(False)
         else:
             func.__no_content = [False]
+
+        _example = [example] if as_list else example
+        if "__custom_example" in func.__dict__:
+            func.__custom_example.append(_example)
+        else:
+            func.__custom_example = [_example]
 
         @wraps(func)
         def wrapper(self, *args, **kwargs):
@@ -1104,15 +1253,17 @@ def reorder_with(schema, as_list: bool = False, response_code=200, description=N
     return decorated
 
 
-def reorder_list_with(schema, response_code=200, description=None):
+def reorder_list_with(schema, response_code=200, description=None, summary=None, example=None):
     """
     Same as reoder_with with as_list = True
     :param schema:
     :param response_code:
     :param description
+    :param summary
+    :param example
     :return:
     """
-    return reorder_with(schema, True, response_code, description)
+    return reorder_with(schema, True, response_code, description, summary, example)
 
 
 def __tags_method(func, *_tags):
@@ -1139,7 +1290,7 @@ def __tags_decorated_class(cls, *_tags):
     :return:
     """
     for name, m in inspect.getmembers(cls, lambda x: inspect.isfunction(x) or inspect.ismethod(x)):
-        if name in ['get', 'post', 'patch', 'put', 'delete']:
+        if name in constants.operation_object_list:
             setattr(cls, name, __tags_method(m, *_tags))
     return cls
 

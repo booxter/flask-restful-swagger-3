@@ -37,23 +37,22 @@ The Api class supports the following parameters:
 | Parameter | Description |
 | --------- | ----------- |
 | `add_api_spec_resource` | Set to `True` to add an endpoint to serve the swagger specification (defaults to `True`). |
-| `version` | The API version string (defaults to '0.0'). Maps to the `version` field of the [info object](http://swagger.io/specification/#infoObject). |
+| `version` | The API version string (defaults to '0.0'). Maps to the `version` field of the [info object](https://swagger.io/specification/#infoObject). |
 | `swagger_prefix_url` | The URL prefix for swagger (defaults to `/api/doc)` |
 | `swagger_url`| The URL path that serves the swagger specification document (defaults to `swagger.json`). |
-| `servers` | The server on which the API is served, it replaces `schemes`, `host` and `base_path` [server object](http://swagger.io/specification/#serverObject). |
-| `schemas`| The Schema Object allows the definition of input and output data types. Maps to the [`schema`](http://swagger.io/specification/#schemaObject) |
-| `content` | A list of MIME types the API can consume. Maps to the [`contents`](http://swagger.io/specification/#contentObject) field of the [components](http://swagger.io/specification/#componentObject). |
-| `contact` | The contact information for the API. Maps to the `contact` field of the [info object](http://swagger.io/specification/#infoObject). |
-| `description` | A short description of the application. Maps to the `description` field of the [info object](http://swagger.io/specification/#infoObject). |
-| `external_docs` | Additional external documentation. Maps to the `externalDocs` field of the [operation object](http://swagger.io/specification/#operationObject). |
-| `license` | The license information for the API. Maps to the `license` field of the [info object](http://swagger.io/specification/#infoObject). |
-| `parameters` | The parameters that can be used across operations. Maps to the `parameters` field of the [operation object](http://swagger.io/specification/#operationObject). |
-| `responses` | The responses that can be used across operations. Maps to the `responses` field of the [operation object](http://swagger.io/specification/#operationObject). |
+| `servers` | The list of server on which the API is served, it replaces `schemes`, `host` and `base_path`. Maps to the [server object](https://swagger.io/specification/#serverObject). |
+| `components` | A list reusable objects for different aspects of the OAS. All objects defined within the components object will have no effect on the API unless they are explicitly referenced from properties outside the components object. Maps to the [components](http://swagger.io/specification/#componentsObject). |
+| `contact` | The contact information for the API. Maps to the `contact` field of the [info object](https://swagger.io/specification/#infoObject). |
+| `description` | A short description of the application. Maps to the `description` field of the [info object](https://swagger.io/specification/#infoObject). |
+| `external_docs` | Additional external documentation. Maps to the `externalDocs` field of the [operation object](https://swagger.io/specification/#operationObject). |
+| `license` | The license information for the API. Maps to the `license` field of the [info object](https://swagger.io/specification/#infoObject). |
+| `parameters` | The parameters that can be used across operations. Maps to the `parameters` field of the [operation object](https://swagger.io/specification/#operationObject). |
 | `security` | A declaration of which security mechanisms can be used across the API. The list of values includes alternative security requirement objects that can be used. Only one of the security requirement objects need to be satisfied to authorize a request. Individual operations can override this definition. Maps to the `security` field of the [OpenAPI Object](http://swagger.io/specification/#openapiObject). |
-| `securitySchemes` | The security schemes for the API. Maps to the `securitySchemes` field of the [component object](http://swagger.io/specification/#componentsObject). |
-| `tags` | A list of tags used by the specification with additional metadata. Maps to the `tags` field fo the [OpenAPI Object](http://swagger.io/specification/#openapiObject). |
-| `terms` | The terms of service for the API. Maps to the `termsOfService` field of the [info object](http://swagger.io/specification/#infoObject). |
-| `title` | The title of the application (defaults to the flask app module name). Maps to the `title` field of the [info object](http://swagger.io/specification/#infoObject). |
+| `tags` | A list of tags used by the specification with additional metadata. Maps to the `tags` field fo the [OpenAPI Object](https://swagger.io/specification/#openapiObject). |
+| `terms` | The terms of service for the API. Maps to the `termsOfService` field of the [info object](https://swagger.io/specification/#infoObject). |
+| `title` | The title of the application (defaults to the flask app module name). Maps to the `title` field of the [info object](https://swagger.io/specification/#infoObject). |
+
+To see 
 
 ## Documenting API endpoints
 
@@ -67,7 +66,7 @@ _You need to import `swagger` from `flask_restful_swagger_3`_
 * `swagger.tags`: Allow to group operations with a list of tags (argument accepted: a list os strings)
 * `swagger.reorder_with`: Apply a schema and a response to a method, default response code is `200` (argument accepted: `schema`: the schema to apply, `as_list`: Apply the schema as list (default is `False`), `response_code`: The response code to apply the example schema (default is `200`), `description`: Description of the method (default is the function doc))
 * `swagger.reorder_list_with`: Same as `swagger.reorder_with` with `as_list` at `True`
-* `swagger.response`: Add a response to the method (argument accepted: `response_code`:  The response to add to the method, `description`: The description of the response, `schema`: The schema to apply to the method, `no_content`: if `True`: `content` is not added to response, default: `False`)
+* `swagger.response`: Add a response to the method (argument accepted: `response_code`:  The response to add to the method, `description`: The description of the response, `schema`: The schema to apply to the method, `no_content`: if `True`: `content` is not added to response, default: `False`, `example`: example of response)
 * `swagger.parameter`: Add a parameter to the method (Don't use the `path`parameter, it will be added automatically with a url with variable: `/users:<int:user_id>`) (argument accepted: _in, name, schema, description or a `dictionnary)
 * `swagger.parameters`: Add several parameters to the method, it can add the args to the `_parser` of the method if exist  (argument accepted: a list of parameter)
 * `swagger.expected`: Add a request body to the method (argument accepted: `schema`: The schema expected, `required`)
@@ -82,7 +81,7 @@ class UserItemResource(Resource):
     @swagger.reorder_with(UserModel, description="Returns a user")
     def get(self, user_id):
         # Do some processing
-        return UserModel(**{id=1, name='somebody'}), 200  # generates json response {"id": 1, "name": "somebody"}
+        return UserModel(**{'id': 1, 'name': 'somebody'}), 200  # generates json response {"id": 1, "name": "somebody"}
 
 ```
 
@@ -94,7 +93,7 @@ api.add_resource(UserItemResource, '/api/users/<int:user_id>')
 
 ## Parsing query parameters
 
-If a resource function contains the special argument `_parser`, any `query` type parameters in the
+If a resource has decorator ``swagger.parameters`` or ``swagger.parameter`` with `in` or `_in` equal `query`, the
 documentation will be automatically added to a reqparse parser and assigned to the `_parser` argument.
 
 ## Using models
@@ -118,9 +117,7 @@ class KeysModel(Schema):
         }
     }
 
-
 class UserModel(Schema):
-    type = 'object'
     properties = {
         'id': {
             'type': 'integer',
@@ -130,10 +127,26 @@ class UserModel(Schema):
             'type': 'string'
         },
         'mail': EmailModel,
-        'keys': KeysModel.array()
+        'keys': KeysModel.array(),
+        'user_type': {
+            'type': 'string',
+            'enum': ['admin', 'regular'],
+            'nullable': True
+        },
+        'password': {
+            'type': 'string',
+            'format': 'password',
+            'load_only': True
+        }
     }
     required = ['name']
 ```
+
+For each ``properties``, you can add ``nullable``, ``dump_only`` and ``load_only`` (look ``UserModel`` example):
+
+* ``nullable``: The property can be ``None`` (``null`` in json format)
+* ``dump_only``: The schema will raise an error if property is added
+* ``load_only``: The schema will not display the property
 
 ### SuperModel
 

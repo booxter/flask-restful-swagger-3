@@ -50,7 +50,7 @@ class UserResource(Resource):
 class UserItemResource(Resource):
     @swagger.tags('usersItem')
     @swagger.reorder_with(UserModel, response_code=200)
-    @swagger.response(response_code=404, description="User not found")
+    @swagger.response(response_code=404, description="User not found", example={'message': "not found"})
     @swagger.response(response_code=400, description="Some errors without content", no_content=True)
     def get(self, user_id):
         """Returns a specific user."""
@@ -65,7 +65,7 @@ class UserItemResource(Resource):
 
 class GroupResource(Resource):
     post_parser = RequestParser()
-    post_parser.add_argument('name', type=str, required="true")
+    post_parser.add_argument('name', type=str, required=True)
     post_parser.add_argument('id', type=int, help='Id of new group')
     post_parser.add_argument('type', type=str, choices=['first', 'second', 'third'])
     added_groups = []
@@ -114,3 +114,9 @@ class ProductResource(Resource):
         products = list(map(lambda product: ProductSchema(**product), list_of_products))
 
         return products, 200
+
+    @swagger.response(201)
+    @swagger.expected(ProductSchema, required=True)
+    def post(self):
+        """Add new product"""
+        return {}, 201

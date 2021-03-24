@@ -48,7 +48,27 @@ def bad_schema_resource_in_parameters():
     return fixture_resources.bad_schema_resource_in_parameters()
 
 
+@pytest.fixture
+def bad_resource_parameter_type():
+    return fixture_resources.bad_resource_parameter_type
+
+
+@pytest.fixture
+def bad_resource_parameters_type():
+    return fixture_resources.bad_resource_parameters_type
+
+
+@pytest.fixture
+def bad_resource_parameters_in_is_path():
+    return fixture_resources.bad_resource_parameters_in_is_path
+
+
 # Schemas
+@pytest.fixture
+def super_schema():
+    return fixture_models.super_schema()
+
+
 @pytest.fixture
 def schema_test_model():
     return fixture_models.schema_test_model()
@@ -209,6 +229,11 @@ def request_body():
 
 
 @pytest.fixture
+def path_item_object():
+    return fixture_swagger.path_item_object()
+
+
+@pytest.fixture
 def components_schemas_object():
     return fixture_swagger.components_schemas_object()
 
@@ -249,5 +274,45 @@ def components_link_object():
 
 
 @pytest.fixture
+def components_callback_object():
+    return fixture_swagger.components_callback_object()
+
+
+@pytest.fixture
 def server_object():
     return fixture_swagger.server_object()
+
+
+@pytest.fixture
+def open_api_object():
+    return fixture_swagger.open_api_object()
+
+
+@pytest.fixture
+def paths_object():
+    return fixture_swagger.paths_object()
+
+
+@pytest.fixture
+def external_documentation_object():
+    return fixture_swagger.external_documentation_object()
+
+
+@pytest.fixture
+def security():
+    return fixture_swagger.security()
+
+
+@pytest.fixture
+def example_object():
+    return fixture_swagger.example_object()
+
+
+@pytest.fixture
+def tags_object():
+    return fixture_swagger.tags_object()
+
+
+@pytest.fixture
+def media_types():
+    return fixture_swagger.media_types()

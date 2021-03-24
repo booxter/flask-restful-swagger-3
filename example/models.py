@@ -1,6 +1,10 @@
 from flask_restful_swagger_3 import Schema
 
 
+class SimpleEmailModel(Schema):
+    type = 'string'
+
+
 class EmailModel(Schema):
     type = 'string'
     format = 'email'
@@ -17,6 +21,7 @@ class SuperUserModel(Schema):
             'type': 'integer',
             'format': 'int64',
         },
+        'mail': SimpleEmailModel,
     }
     required = ['id']
 
@@ -31,12 +36,12 @@ class UserModel(SuperUserModel):
         'user_type': {
             'type': 'string',
             'enum': ['admin', 'regular'],
-            'nullable': 'true'
+            'nullable': True
         },
         'password': {
             'type': 'string',
             'format': 'password',
-            'load_only': 'true'
+            'load_only': True
         }
     }
     required = ['name']

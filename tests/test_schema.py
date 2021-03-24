@@ -1,6 +1,9 @@
-import pytest
+import json
 
-from flask_restful_swagger_3 import Schema
+import pytest
+from flask_restful_swagger_3.exceptions import SchemaAlreadyExist
+
+from flask_restful_swagger_3 import Schema, ExampleEncoder, swagger
 
 
 class TestSchema:
@@ -115,10 +118,9 @@ class TestSchema:
         with pytest.raises(TypeError):
             sub_schema_with_bad_super_schema()
 
-    def test_should_raise_error_when_create_sub_schema_with_super_schema_without_type(
+    def test_should_create_schema_when__super_schema_has_no_type(
             self, sub_schema_with_super_schema_without_type):
-        with pytest.raises(TypeError):
-            sub_schema_with_super_schema_without_type()
+        sub_schema_with_super_schema_without_type()
 
     def test_should_validate_array_schema_object_ok(self, schema_with_array, object_with_array):
         schema_with_array(**object_with_array)
@@ -207,14 +209,457 @@ class TestSchema:
                 'pass': {
                     'type': 'string',
                     'format': 'password',
-                    'load_only': True
+                    'load_only': 'true'
                 }
             }
         assert Password(**{'name': 'name', 'pass': 'password'}) == {'name': 'name'}
         assert Password.definitions() == {
             'properties': {
                 'name': {'type': 'string'},
-                'pass': {'format': 'password', 'type': 'string'}
+                'pass': {'format': 'password', 'type': 'string', 'load_only': 'true'}
             },
             'type': 'object'
         }
+
+    def test_schema_raise_error_if_schema_already_exists(self):
+        class NewSchema(Schema):
+            type = 'object'
+            properties = {
+                'name': {
+                    'type': 'string',
+                },
+                'pass': {
+                    'type': 'string',
+                    'format': 'password',
+                    'load_only': 'true'
+                }
+            }
+        with pytest.raises(SchemaAlreadyExist) as e:
+            class NewSchema(Schema):
+                pass
+
+        assert str(e.value.message) == "You must not create 2 or more schemas with the same name:" \
+                                       " NewSchema already exists"
+
+    def test_schema_raise_error_when_properties_is_not_dict(self):
+        with pytest.raises(TypeError):
+            class BadPropertiesSchema(Schema):
+                type = 'object'
+                properties = 'name'
+
+    def test_schema_raise_error_when_properties_is_null_and_type_is_object(self):
+        with pytest.raises(TypeError):
+            class MissingPropertiesSchema(Schema):
+                type = 'object'
+
+    def test_schema_raise_error_when_item_is_load_only_and_dump_only(self):
+        class SchemaDumpOnlyAndLoadOnly(Schema):
+            type = 'object'
+            properties = {
+                'name': {
+                    'type': 'string',
+                    'load_only': 'true',
+                    'dump_only': 'true'
+                }
+            }
+
+        with pytest.raises(TypeError):
+            SchemaDumpOnlyAndLoadOnly(**{'name': 'test'})
+
+        class SchemaTypeDumpOnlyAndLoadOnly(Schema):
+            type = 'string'
+            load_only = 'true'
+            dump_only = 'true'
+
+        class SecondSchemaDumpOnlyAndLoadOnly(Schema):
+            type = 'object'
+            properties = {
+                'name': SchemaTypeDumpOnlyAndLoadOnly
+            }
+
+        with pytest.raises(TypeError):
+            SecondSchemaDumpOnlyAndLoadOnly(**{'name': 'test'})
+
+    def test_schema_valid_when_load_only(self, user_model):
+        user = {
+            'id': 1,
+            'name': 'test',
+            'password': 'password'
+        }
+        user_result = {
+            'id': 1,
+            'name': 'test'
+        }
+        assert user_model(**user) == user_result
+
+    def test_schema_valid_when_load_only_and_null(self, user_model):
+        user = {
+            'id': 1,
+            'name': 'test',
+            'password': None
+        }
+        user_result = {
+            'id': 1,
+            'name': 'test'
+        }
+        assert user_model(**user) == user_result
+
+    def test_schema_valid_when_load_only_and_true(self):
+        class SchemaLoadOnlyAndTrue(Schema):
+            type = 'object'
+            properties = {
+                'id': {
+                    'type': 'int'
+                },
+                'name': {
+                    'type': 'string',
+                },
+                'value': {
+                    'type': 'boolean',
+                    'load_only': 'true'
+                }
+            }
+
+        user = {
+            'id': 1,
+            'name': 'test',
+            'value': True
+        }
+
+        user_result = {
+            'id': 1,
+            'name': 'test',
+        }
+        assert SchemaLoadOnlyAndTrue(**user) == user_result
+
+    def test_schema_valid_when_load_only_and_false(self):
+        class SchemaLoadOnlyAndFalse(Schema):
+            type = 'object'
+            properties = {
+                'id': {
+                    'type': 'int'
+                },
+                'name': {
+                    'type': 'string',
+                },
+                'value': {
+                    'type': 'boolean',
+                    'load_only': 'true'
+                }
+            }
+
+        user = {
+            'id': 1,
+            'name': 'test',
+            'value': False
+        }
+
+        user_result = {
+            'id': 1,
+            'name': 'test',
+        }
+        assert SchemaLoadOnlyAndFalse(**user) == user_result
+
+    def test_schema_valid_when_required_is_list(self):
+        class SchemaRequiredList(Schema):
+            type = 'object'
+            properties = {
+                'id': {
+                    'type': 'int'
+                },
+                'name': {
+                    'type': 'string',
+                },
+                'value': {
+                    'type': 'boolean',
+                    'load_only': 'true'
+                }
+            }
+            required = ['id']
+
+        user = {
+            'id': 1,
+            'name': 'test',
+            'value': False
+        }
+        assert SchemaRequiredList(**user)
+
+        bad_user = {
+            'name': 'test',
+            'value': False
+        }
+
+        with pytest.raises(ValueError):
+            SchemaRequiredList(**bad_user)
+
+    def test_schema_valid_when_required_is_set(self):
+        class SchemaRequiredSet(Schema):
+            type = 'object'
+            properties = {
+                'id': {
+                    'type': 'int'
+                },
+                'name': {
+                    'type': 'string',
+                },
+                'value': {
+                    'type': 'boolean',
+                    'load_only': 'true'
+                }
+            }
+            required = {'id'}
+
+        user = {
+            'id': 1,
+            'name': 'test',
+            'value': False
+        }
+        assert SchemaRequiredSet(**user)
+
+        bad_user = {
+            'name': 'test',
+            'value': False
+        }
+
+        with pytest.raises(ValueError):
+            SchemaRequiredSet(**bad_user)
+
+    def test_schema_valid_when_required_is_tuple(self):
+        class SchemaRequiredTuple(Schema):
+            type = 'object'
+            properties = {
+                'id': {
+                    'type': 'int'
+                },
+                'name': {
+                    'type': 'string',
+                },
+                'value': {
+                    'type': 'boolean',
+                    'load_only': 'true'
+                }
+            }
+            required = 'id',
+
+        user = {
+            'id': 1,
+            'name': 'test',
+            'value': False
+        }
+        assert SchemaRequiredTuple(**user)
+
+        bad_user = {
+            'name': 'test',
+            'value': False
+        }
+
+        with pytest.raises(ValueError):
+            SchemaRequiredTuple(**bad_user)
+
+    def test_schema_raise_error_when_required_is_bad_type(self):
+        with pytest.raises(TypeError):
+            class SchemaRequiredBadType(Schema):
+                type = 'object'
+                properties = {
+                    'id': {
+                        'type': 'int'
+                    },
+                    'name': {
+                        'type': 'string',
+                    },
+                    'value': {
+                        'type': 'boolean',
+                        'load_only': 'true'
+                    }
+                }
+                required = 'id'
+
+    def test_sub_schema_raise_error_when_change_type_of_existing_property(self, super_schema):
+        with pytest.raises(TypeError):
+            class SchemaPropertyTypeChange(super_schema):
+                properties = {
+                    'id': {'type': 'string'},
+                    'super_attribute': {'type': 'integer'}
+                }
+
+    def test_schema_array_example(self):
+        class SchemaArrayExample(Schema):
+            type = 'array'
+            items = {'type': 'string'}
+
+        assert SchemaArrayExample.example() == ['string']
+
+        class SchemaWillUseSchemaArray(Schema):
+            type = 'object'
+            properties = {'array': SchemaArrayExample}
+
+        assert json.loads(json.dumps(SchemaWillUseSchemaArray.example(), cls=ExampleEncoder)) == {
+            'array': ['string']
+        }
+
+        class SchemaWithArrayProperties(Schema):
+            type = 'object'
+            properties = {
+                'array': {
+                    'type': 'array',
+                    'items': {
+                        'type': 'string'
+                    }
+                }
+            }
+
+        assert json.loads(json.dumps(SchemaWithArrayProperties.example(), cls=ExampleEncoder)) == {
+            'array': ['string']
+        }
+
+    def test_schema_array_example_items_missing(self):
+        with pytest.raises(TypeError):
+            class SchemaArrayExampleItemsMissing(Schema):
+                type = 'array'
+
+    def test_sub_schema(self):
+        class AnEmailModel(Schema):
+            type = 'string'
+            # format = 'email'
+
+        class AnEmailOtherModel(Schema):
+            type = 'string'
+            format = 'email'
+
+        class NewOtherSchema(Schema):
+            type = 'object'
+            properties = {
+                'id': {
+                    'type': 'integer'
+                },
+                'name': {
+                    'type': 'string',
+                },
+                'value': {
+                    'type': 'boolean',
+                    'load_only': 'true'
+                },
+                'email': AnEmailModel
+            }
+
+        class NewOtherSubSchema(NewOtherSchema):
+            properties = {
+                'value': {
+                    'type': 'boolean',
+                    'load_only': 'false',
+                    'dump_only': 'true',
+                    'nullable': 'true'
+                },
+                'password': {
+                    'type': 'string'
+                },
+                'email': AnEmailOtherModel
+            }
+
+        properties = {
+            'id': {
+                'type': 'integer',
+            },
+            'name': {
+                'type': 'string',
+            },
+            'value': {
+                'type': 'boolean',
+                'load_only': 'true'
+            },
+            'email': AnEmailModel
+        }
+
+        new_properties = {
+            'id': {
+                'type': 'integer'
+            },
+            'name': {
+                'type': 'string',
+            },
+            'value': {
+                'type': 'boolean',
+                'load_only': 'false',
+                'nullable': 'true',
+                'dump_only': 'true',
+            },
+            'password': {
+                'type': 'string'
+            },
+            'email': {
+                'type': 'string',
+                'format': 'email'
+            }
+        }
+
+        assert NewOtherSchema.properties == properties
+
+        assert NewOtherSubSchema.properties == new_properties
+
+        class AnUserModel(Schema):
+            type = 'object'
+            properties = {
+                'id': {
+                    'type': 'integer'
+                },
+                'name': {
+                    'type': 'string'
+                },
+                'email': {
+                    'type': 'string'
+                }
+            }
+
+        class AMoreSeriousUserModel(Schema):
+            type = 'object'
+            properties = {
+                'id': {
+                    'type': 'integer'
+                },
+                'name': {
+                    'type': 'string'
+                },
+                'email': AnEmailOtherModel
+            }
+
+        class SuperClassThatUseUserModel(Schema):
+            type = 'object'
+            properties = {
+                'id': {
+                    'type': 'integer'
+                },
+                'user': AnUserModel
+            }
+
+        class SubClassThatUseUserModel(SuperClassThatUseUserModel):
+            properties = {
+                'user': AMoreSeriousUserModel
+            }
+
+        properties = {
+            'id': {
+                'type': 'integer',
+            },
+            'user': AnUserModel
+        }
+
+        new_properties = {
+            'id': {
+                'type': 'integer'
+            },
+            'user': {
+                'id': {
+                    'type': 'integer'
+                },
+                'name': {
+                    'type': 'string'
+                },
+                'email': {
+                    'type': 'string',
+                    'format': 'email'
+                }
+            }
+        }
+
+        assert SuperClassThatUseUserModel.properties == properties
+        assert SubClassThatUseUserModel.properties == new_properties

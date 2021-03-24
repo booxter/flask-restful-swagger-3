@@ -13,8 +13,14 @@ from views import UserResource, UserItemResource, GroupResource, ProductResource
 app = Flask(__name__)
 CORS(app)
 
+security = [
+    {
+        "api_key": []
+    }
+]
+
 servers = [{"url": "http://localhost:5000"}]
-api = Api(app, version='5', servers=servers, title="APP")
+api = Api(app, version='5', servers=servers, title="APP")  # , security=security)
 
 
 def auth(api_key, endpoint, method):
@@ -29,10 +35,9 @@ SWAGGER_URL = '/api/doc'  # URL for exposing Swagger UI (without trailing '/')
 API_URL = 'swagger.json'  # Our API url (can of course be a local resource)
 
 swagger_blueprint = get_swagger_blueprint(
-    api.open_api_json,
+    api.open_api_object,
     swagger_prefix_url=SWAGGER_URL,
-    swagger_url=API_URL,
-    title='Example', version='1', servers=servers)
+    swagger_url=API_URL)
 
 
 swagger.auth = auth

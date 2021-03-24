@@ -1,7 +1,7 @@
 import json
 import pytest
 from flask import Blueprint
-from tests.base_test import BaseTest, BaseTestApi, NotAuthorizeApi, BaseTestApiBlueprint
+from tests.base_test import BaseTest, BaseTestApi, NotAuthorizeApi, BaseTestApiBlueprint, BaseTestApiNoContext
 from flask_restful_swagger_3 import swagger, get_swagger_blueprint, Api, Resource
 
 
@@ -9,7 +9,7 @@ class TestApi(BaseTestApi):
 
     def test_get_spec_object(self):
         # Retrieve spec object
-        spec = self.api.open_api_json
+        spec = self.api.open_api_object
         assert "info" in spec
         assert "title" in spec["info"]
         assert spec["info"]["title"] == "Example"
@@ -76,6 +76,39 @@ class TestApi(BaseTestApi):
         assert data['id'] == 1
         assert data['name'] == 'test'
 
+    def test_post_user_with_swagger_payload(self):
+        user_payload = {
+            'id': 1,
+            'name': 'fake_name'
+        }
+        r = self.client_app.post(
+            "/users", data=json.dumps(user_payload), content_type="application/json"
+        )
+        assert r.status_code == 201
+
+        data = json.loads(r.data.decode())
+        assert data == {
+            'id': 1,
+            'name': 'fake_name'
+        }
+
+    def test_with_parser(self):
+        user_payload = {
+            'id': 2,
+            'name': 'fake_name',
+            'private': True
+        }
+        r = self.client_app.post(
+            "/entities", data=json.dumps(user_payload), content_type="application/json"
+        )
+        assert r.status_code == 200
+
+        data = json.loads(r.data.decode())
+        assert data == {
+            'id': 2,
+            'name': 'fake_name'
+        }
+
     def test_delete_user_return_no_content(self):
         r = self.client_app.get('api/doc/swagger.json')
         assert r.status_code == 200
@@ -96,8 +129,8 @@ class TestApi(BaseTestApi):
         with pytest.raises(ValueError) as e:
             self.api.add_resource(bad_format_url, '/bad_url/<string:email:test>')
 
-        assert str(e.value) == "You must define one converter for a variable_name," \
-                               " if you want several converter don't mention any 'string:email:test'"
+        assert str(e.value) == "You must define one converter for a variable_name, " \
+                               "if you want several converter don't mention any 'string:email'"
 
     def test_no_converter_in_url(self, no_converter_resource):
         self.api.add_resource(no_converter_resource, '/no_converter/<id>')
@@ -107,6 +140,20 @@ class TestApi(BaseTestApi):
             self.api.add_resource(bad_schema_resource_in_parameters, '/url')
 
         assert str(e.value) == "'schema' must be of type 'dict' or subclass of 'Schema', not <class 'str'>"
+
+    def test_bad_resource_parameter_type(self, bad_resource_parameter_type):
+        with pytest.raises(ValueError) as e:
+            bad_resource_parameter_type()
+
+        assert str(e.value) == "'param' test must be of type 'dict'"
+
+    def test_bad_resource_parameters_type(self, bad_resource_parameters_type):
+        with pytest.raises(ValueError) as e:
+            bad_resource_parameters_type()
+
+    def test_bad_resource_parameters_in_is_path(self, bad_resource_parameters_in_is_path):
+        with pytest.raises(swagger.ValidationError):
+            bad_resource_parameters_in_is_path()
 
     def test_bad_schema_resource(self):
         class BadSchema:
@@ -143,7 +190,7 @@ class TestApi(BaseTestApi):
         self.api.add_resource(SomeResource, '/url')
 
     def test_get_swagger_blueprint(self):
-        swagger_blueprint = get_swagger_blueprint(self.api.open_api_json, swagger_blueprint_name="swagger_app")
+        swagger_blueprint = get_swagger_blueprint(self.api.open_api_object, swagger_blueprint_name="swagger_app")
         self.app.register_blueprint(swagger_blueprint)
         swagger_ui_result = self.client_app.get('/')
         assert swagger_ui_result.status_code == 200
@@ -166,8 +213,11 @@ class TestApi(BaseTestApi):
         assert 'paths' in spec
 
     def test_get_swagger_blueprint_with_url_prefix(self):
-        blueprint = get_swagger_blueprint(self.api.open_api_json)
-        self.app.register_blueprint(blueprint)
+        self.app.config.setdefault('SWAGGER_BLUEPRINT_URL_PREFIX', '/my_swagger')
+        with self.ctx:
+            swagger_blueprint = get_swagger_blueprint(self.api.open_api_object,
+                                                      swagger_blueprint_name="swagger_app_with_url_prefix")
+        self.app.register_blueprint(swagger_blueprint)
         swagger_ui_result = self.client_app.get('/')
         assert swagger_ui_result.status_code == 200
 
@@ -194,9 +244,6 @@ class TestApi(BaseTestApi):
         expected = {'id': 0, 'name': 'string', 'mail': 'john.doe@butcher.com', 'keys': ['john', 'max']}
         assert r.status_code == 201
         assert data == expected
-
-
-class TestFlaskSwaggerRequestParser(BaseTestApi):
 
     def test_request_parser_spec_definitions(self):
         # Retrieve spec
@@ -244,6 +291,54 @@ class TestFlaskSwaggerRequestParser(BaseTestApi):
         assert properties['password_arg']['type'] == 'password'
 
 
+class TestApiNoContext(BaseTestApiNoContext):
+    def test_get_swagger_blueprint(self):
+        blueprint = get_swagger_blueprint(self.api.open_api_object, swagger_blueprint_name="swagger_app")
+        self.app.register_blueprint(blueprint)
+        swagger_ui_result = self.client_app.get('/')
+        assert swagger_ui_result.status_code == 200
+
+        swagger_bundle = self.client_app.get('/swagger-ui-bundle.js')
+        assert swagger_bundle.status_code == 200
+
+        swagger_standalone = self.client_app.get('/swagger-ui-standalone-preset.js')
+        assert swagger_standalone.status_code == 200
+
+        swagger_css = self.client_app.get('/swagger-ui.css')
+        assert swagger_css.status_code == 200
+
+        spec_result = self.client_app.get('/api/doc/swagger.json')
+        assert spec_result.status_code == 200
+
+        spec = json.loads(spec_result.data.decode())
+        assert spec['openapi'] == '3.0.2'
+        assert 'info' in spec
+        assert 'paths' in spec
+
+    def test_get_swagger_blueprint_with_url_prefix_return_404_when(self):
+        blueprint = get_swagger_blueprint(self.api.open_api_object)
+        self.app.register_blueprint(blueprint, url_prefix="/my_swagger")
+        swagger_ui_result = self.client_app.get('/my_swagger')
+        assert swagger_ui_result.status_code == 200
+
+        swagger_bundle = self.client_app.get('/my_swagger/swagger-ui-bundle.js')
+        assert swagger_bundle.status_code == 200
+
+        swagger_standalone = self.client_app.get('/my_swagger/swagger-ui-standalone-preset.js')
+        assert swagger_standalone.status_code == 200
+
+        swagger_css = self.client_app.get('/my_swagger/swagger-ui.css')
+        assert swagger_css.status_code == 200
+
+        spec_result = self.client_app.get('/my_swagger/api/doc/swagger.json')
+        assert spec_result.status_code == 200
+
+        spec = json.loads(spec_result.data.decode())
+        assert spec['openapi'] == '3.0.2'
+        assert 'info' in spec
+        assert 'paths' in spec
+
+
 class TestBlueprint(BaseTest):
     @pytest.fixture(autouse=True)
     def init_blueprint(self, user_resource):
@@ -253,7 +348,7 @@ class TestBlueprint(BaseTest):
 
     def test_get_spec_object(self):
         # Retrieve spec object
-        spec = self.api.open_api_json
+        spec = self.api.open_api_object
 
         assert "info" in spec
         assert "title" in spec["info"]
@@ -267,7 +362,7 @@ class TestBlueprint(BaseTest):
         assert r.status_code == 404
 
     def test_get_swagger_blueprint(self):
-        swagger_blueprint = get_swagger_blueprint(self.api.open_api_json, swagger_blueprint_name="swagger_app")
+        swagger_blueprint = get_swagger_blueprint(self.api.open_api_object, swagger_blueprint_name="swagger_app")
         self.app.register_blueprint(swagger_blueprint)
         swagger_ui_result = self.client_app.get('/')
         assert swagger_ui_result.status_code == 200
@@ -291,7 +386,7 @@ class TestBlueprint(BaseTest):
     def test_get_swagger_blueprint_with_url_prefix(self):
         self.app.config.setdefault('SWAGGER_BLUEPRINT_URL_PREFIX', '/my_swagger')
         with self.ctx:
-            swagger_blueprint = get_swagger_blueprint(self.api.open_api_json, swagger_blueprint_name="swagger_app_with_url_prefix")
+            swagger_blueprint = get_swagger_blueprint(self.api.open_api_object, swagger_blueprint_name="swagger_app_with_url_prefix")
         self.app.register_blueprint(swagger_blueprint, url_prefix="/my_swagger")
         swagger_ui_result = self.client_app.get('/my_swagger')
         assert swagger_ui_result.status_code == 200
@@ -332,7 +427,7 @@ class TestBlueprint(BaseTest):
 
 class TestBlueprintWithUrlPrefix(BaseTestApiBlueprint):
     def test_blueprint_url(self):
-        swagger_blueprint = get_swagger_blueprint(self.api.open_api_json)
+        swagger_blueprint = get_swagger_blueprint(self.api.open_api_object)
         self.app.register_blueprint(swagger_blueprint)
         swagger_ui_result = self.client_app.get('/')
         assert swagger_ui_result.status_code == 200
@@ -364,7 +459,7 @@ class TestNoAuthorizeApi(NotAuthorizeApi):
 
     def test_get_spec_object(self):
         # Retrieve spec object
-        spec = self.api.open_api_json
+        spec = self.api.open_api_object
         assert "info" in spec
         assert "title" in spec["info"]
         assert spec["info"]["title"] == "Example"
