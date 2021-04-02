@@ -48,6 +48,7 @@ The Api class supports the following parameters:
 | `license` | The license information for the API. Maps to the `license` field of the [info object](https://swagger.io/specification/#infoObject). |
 | `parameters` | The parameters that can be used across operations. Maps to the `parameters` field of the [operation object](https://swagger.io/specification/#operationObject). |
 | `security` | A declaration of which security mechanisms can be used across the API. The list of values includes alternative security requirement objects that can be used. Only one of the security requirement objects need to be satisfied to authorize a request. Individual operations can override this definition. Maps to the `security` field of the [OpenAPI Object](http://swagger.io/specification/#openapiObject). |
+| `authorizations` | Defines a security scheme that can be used by the operations. Maps to the `securitySchemes` field of [components Object](https://swagger.io/specification/#componentsObject) |
 | `tags` | A list of tags used by the specification with additional metadata. Maps to the `tags` field fo the [OpenAPI Object](https://swagger.io/specification/#openapiObject). |
 | `terms` | The terms of service for the API. Maps to the `termsOfService` field of the [info object](https://swagger.io/specification/#infoObject). |
 | `title` | The title of the application (defaults to the flask app module name). Maps to the `title` field of the [info object](https://swagger.io/specification/#infoObject). |

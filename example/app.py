@@ -19,8 +19,18 @@ security = [
     }
 ]
 
-servers = [{"url": "http://localhost:5000"}]
-api = Api(app, version='5', servers=servers, title="APP")  # , security=security)
+authorizations = {
+    "apikey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+    }
+}
+
+servers = [{"url": "http://localhost:5001"}]
+api = Api(app, version='5', servers=servers, title="APP")
 
 
 def auth(api_key, endpoint, method):
@@ -37,7 +47,8 @@ API_URL = 'swagger.json'  # Our API url (can of course be a local resource)
 swagger_blueprint = get_swagger_blueprint(
     api.open_api_object,
     swagger_prefix_url=SWAGGER_URL,
-    swagger_url=API_URL)
+    swagger_url=API_URL,
+    authorizations=authorizations)
 
 
 swagger.auth = auth
@@ -51,4 +62,4 @@ app.register_blueprint(swagger_blueprint)
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0')
+    app.run(debug=True, host='0.0.0.0', port=5001)

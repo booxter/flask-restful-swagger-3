@@ -66,7 +66,11 @@ class Api(restful_Api):
 
         swagger_prefix_url = kwargs.pop("swagger_prefix_url", "/api/doc")
         swagger_url = kwargs.pop("swagger_url", "swagger.json")
-        add_api_spec_resource = kwargs.pop('add_api_spec_resource', True)
+        add_api_spec_resource = kwargs.pop("add_api_spec_resource", True)
+        authorizations = kwargs.pop("authorizations", None)
+
+        if authorizations:
+            self.open_api_object["components"]["securitySchemes"] = authorizations
 
         add_parameters(self.__open_api_object, kwargs)
 
@@ -770,6 +774,14 @@ def get_swagger_blueprint(
     :param oauth_config
     :return: A Flask blueprint
     """
+
+    authorizations = kwargs.pop("authorizations", None)
+
+    if authorizations:
+        if "securitySchemes" in swagger_object["components"]:
+            swagger_object["components"]["securitySchemes"].update(authorizations)
+        else:
+            swagger_object["components"]["securitySchemes"] = authorizations
 
     add_parameters(swagger_object, kwargs)
     validate_open_api_object(swagger_object)
