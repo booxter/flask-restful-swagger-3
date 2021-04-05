@@ -63,6 +63,16 @@ def bad_resource_parameters_in_is_path():
     return fixture_resources.bad_resource_parameters_in_is_path
 
 
+@pytest.fixture
+def user_secured_resource():
+    return fixture_resources.user_secured_resource()
+
+
+@pytest.fixture
+def partial_secured_resource():
+    return fixture_resources.partial_secured_resource()
+
+
 # Schemas
 @pytest.fixture
 def super_schema():

@@ -1,3 +1,19 @@
+Version 0.4.6
+---------------
+
+Released 2021-04-04
+
+-  Add security for each operation Object
+
+
+Version 0.4.5
+-------------
+
+Released 2021-04-03
+
+-  Add authorizations parameter to  Api and swagger blueprint
+
+
 Version 0.4.4
 -------------
 

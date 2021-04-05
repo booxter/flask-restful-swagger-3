@@ -64,7 +64,7 @@ You can decorate your Api endpoiints with several decorators to build to swagger
 _You need to import `swagger` from `flask_restful_swagger_3`_
 
 
-* `swagger.tags`: Allow to group operations with a list of tags (argument accepted: a list os strings)
+* `swagger.tags`: Allow to group operations with a list of tags (argument accepted: a list of strings)
 * `swagger.reorder_with`: Apply a schema and a response to a method, default response code is `200` (argument accepted: `schema`: the schema to apply, `as_list`: Apply the schema as list (default is `False`), `response_code`: The response code to apply the example schema (default is `200`), `description`: Description of the method (default is the function doc))
 * `swagger.reorder_list_with`: Same as `swagger.reorder_with` with `as_list` at `True`
 * `swagger.response`: Add a response to the method (argument accepted: `response_code`:  The response to add to the method, `description`: The description of the response, `schema`: The schema to apply to the method, `no_content`: if `True`: `content` is not added to response, default: `False`, `example`: example of response)
@@ -72,6 +72,7 @@ _You need to import `swagger` from `flask_restful_swagger_3`_
 * `swagger.parameters`: Add several parameters to the method, it can add the args to the `_parser` of the method if exist  (argument accepted: a list of parameter)
 * `swagger.expected`: Add a request body to the method (argument accepted: `schema`: The schema expected, `required`)
 * `swagger.reqparser`: Add  request body to the method using RequestParser (argument accepted: `name`: Name use to generate the model, `parser`: The RequestParser() object)
+* `swagger.security`: Add security to a method or a resource. Each argument MUST correspond to a security scheme which is declared in the `Security Schemes` under the Components Object (declared by `authorizations` in Api instance)
 
 ```python
 from flask_restful_swagger_3 import swagger, Resource

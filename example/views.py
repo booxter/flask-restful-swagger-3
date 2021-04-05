@@ -107,6 +107,7 @@ list_of_products = [
 
 
 @swagger.tags("Products")
+@swagger.security(api_key=[])
 class ProductResource(Resource):
     @swagger.reorder_list_with(ProductSchema, response_code=200)
     def get(self):

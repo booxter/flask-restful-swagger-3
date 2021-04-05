@@ -342,7 +342,7 @@ class TestApiNoContext(BaseTestApiNoContext):
 
 class TestBlueprint(BaseTest):
     @pytest.fixture(autouse=True)
-    def init_blueprint(self, user_resource):
+    def init_blueprint(self, user_secured_resource, partial_secured_resource):
         self.authorizations = {
             "apikey": {
                 "type": "apiKey",
@@ -354,7 +354,8 @@ class TestBlueprint(BaseTest):
         }
         self.blueprint = Blueprint('other', __name__)
         self.api = Api(self.blueprint, add_api_spec_resource=False, authorizations=self.authorizations)
-        self.api.add_resource(user_resource, '/users')
+        self.api.add_resource(user_secured_resource, '/users')
+        self.api.add_resource(partial_secured_resource, '/partial')
 
     def test_get_spec_object(self):
         # Retrieve spec object
@@ -365,6 +366,7 @@ class TestBlueprint(BaseTest):
         assert spec["info"]["title"] == "Example"
         assert 'paths' in spec
         assert 'parameters' in spec['paths']['/users']['get']
+        assert '/partial' in spec['paths']
         assert spec['openapi'] == '3.0.2'
         assert spec['components']['securitySchemes'] == self.authorizations
 
@@ -466,77 +468,23 @@ class TestBlueprintWithUrlPrefix(BaseTestApiBlueprint):
         assert data == {'id': 1, 'name': 'test'}
 
 
-class TestBlueprintAddAuthorizations(BaseTest):
-    @pytest.fixture(autouse=True)
-    def init_blueprint(self, user_resource):
-        self.blueprint = Blueprint('other', __name__)
-        self.api = Api(self.blueprint, add_api_spec_resource=False)
-        self.api.add_resource(user_resource, '/users')
-
-    def test_get_swagger_blueprint_with_authorizations(self):
-        authorizations = {
-            "apikey": {
-                "type": "apiKey",
-                "in": "header",
-                "name": "Authorization",
-                "scheme": "bearer",
-                "bearerFormat": "JWT"
-            }
-        }
-        swagger_blueprint = get_swagger_blueprint(
-            self.api.open_api_object,
-            swagger_blueprint_name="swagger_app_with_authorizations",
-            authorizations=authorizations
-        )
-        self.app.register_blueprint(swagger_blueprint)
-        swagger_ui_result = self.client_app.get('/')
-        assert swagger_ui_result.status_code == 200
-
-        swagger_bundle = self.client_app.get('/swagger-ui-bundle.js')
-        assert swagger_bundle.status_code == 200
-
-        swagger_standalone = self.client_app.get('/swagger-ui-standalone-preset.js')
-        assert swagger_standalone.status_code == 200
-
-        swagger_css = self.client_app.get('/swagger-ui.css')
-        assert swagger_css.status_code == 200
-
-        spec_result = self.client_app.get('/api/doc/swagger.json')
-        assert spec_result.status_code == 200
-        spec = json.loads(spec_result.data.decode())
-        assert spec['openapi'] == '3.0.2'
-        assert 'info' in spec
-        assert 'paths' in spec
-        assert spec['components']['securitySchemes'] == authorizations
-
-
 class TestBlueprintUpdateAuthorizations(BaseTest):
     @pytest.fixture(autouse=True)
     def init_blueprint(self, user_resource):
-        authorizations = {
+        self.authorizations = {
             "http": {
                 "type": "http",
                 "scheme": "basic"
             }
         }
         self.blueprint = Blueprint('other', __name__)
-        self.api = Api(self.blueprint, add_api_spec_resource=False, authorizations=authorizations)
+        self.api = Api(self.blueprint, add_api_spec_resource=False, authorizations=self.authorizations)
         self.api.add_resource(user_resource, '/users')
 
     def test_get_swagger_blueprint_with_authorizations(self):
-        authorizations = {
-            "apikey": {
-                "type": "apiKey",
-                "in": "header",
-                "name": "Authorization",
-                "scheme": "bearer",
-                "bearerFormat": "JWT"
-            }
-        }
         swagger_blueprint = get_swagger_blueprint(
             self.api.open_api_object,
-            swagger_blueprint_name="swagger_app_with_authorizations",
-            authorizations=authorizations
+            swagger_blueprint_name="swagger_app_with_authorizations"
         )
         self.app.register_blueprint(swagger_blueprint)
         swagger_ui_result = self.client_app.get('/')
@@ -557,8 +505,7 @@ class TestBlueprintUpdateAuthorizations(BaseTest):
         assert spec['openapi'] == '3.0.2'
         assert 'info' in spec
         assert 'paths' in spec
-        expected_authorizations = copy.deepcopy(authorizations)
-        expected_authorizations["http"] = {'scheme': 'basic', 'type': 'http'}
+        expected_authorizations = copy.deepcopy(self.authorizations)
         assert spec['components']['securitySchemes'] == expected_authorizations
 
 
