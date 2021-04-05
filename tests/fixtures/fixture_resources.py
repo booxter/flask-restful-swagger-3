@@ -295,3 +295,56 @@ def one_resource():
 
     return OneResource
 
+
+def user_secured_resource():
+    @swagger.security(apikey=[])
+    class UserResource(Resource):
+        @swagger.reorder_with(user_model(), response_code=200, description="Get users")
+        @swagger.response(400, description="bad request")
+        @swagger.parameter({
+                    'name': 'name',
+                    'description': 'User name',
+                    'in': 'query',
+                    'schema': {
+                        'type': 'string'
+                    }
+                })
+        def get(self, user_id, _parser):
+            """
+            Returns a specific user.
+            :param user_id: The user identifier
+            :param _parser: parser containing data of query in url
+            """
+            args = _parser.parse_args()
+
+            name = args.get('name', 'somebody')
+            return user_model()(**{'id': user_id, 'name': name, 'password': 'test'}), 200
+
+        @swagger.response(204, description="No content", no_content=True)
+        def delete(self, user_id):
+            return f"User {user_id} deleted", 204
+
+        @swagger.response(201, description="post")
+        @swagger.expected(user_model())
+        def post(self):
+            return swagger.payload(), 201
+
+    return UserResource
+
+
+def partial_secured_resource():
+    class PartialSecuredResource(Resource):
+        @swagger.response(200, description="ok")
+        def get(self):
+            """
+            Returns something
+            """
+            return "Something", 200
+
+        @swagger.security(apikey=[])
+        @swagger.response(201, description="post")
+        def post(self):
+            return swagger.payload(), 201
+
+    return PartialSecuredResource
+

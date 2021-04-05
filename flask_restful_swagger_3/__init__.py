@@ -90,11 +90,10 @@ class Api(restful_Api):
 
     def add_resource(self, resource, *args, endpoint=None, **kwargs):
         schemas = {}
-        # examples = {}
         urls = {}
 
         for method in [m.lower() for m in resource.methods]:
-            __method = {method: {}}
+            operations_object = {method: {}}
             f = resource.__dict__.get(method, None)
             if f:
                 response_code_list = f.__dict__.get("__response_code", [])
@@ -107,6 +106,7 @@ class Api(restful_Api):
                 no_content_list = f.__dict__.get("__no_content", [])
                 custom_example_list = f.__dict__.get("__custom_example", [])
                 summary_list = f.__dict__.get("__summary", [])
+                security = f.__dict__.get("__security",  [])
 
                 assert (
                     len(response_code_list) == len(description_list) == len(model_list) ==
@@ -135,7 +135,7 @@ class Api(restful_Api):
                 req_example = None
                 if request_body:
                     req_schema, req_body = self.__build_request_body(request_body)
-                    __method[method].update(req_body)
+                    operations_object[method].update(req_body)
                     if req_schema:
                         schemas.update(req_schema)
 
@@ -151,6 +151,12 @@ class Api(restful_Api):
                         if req_result_model
                         else None
                     )
+
+                if security:
+                    if "security" in operations_object:
+                        operations_object[method]["security"].append(security)
+                    else:
+                        operations_object[method]["security"] = [security]
 
                 for index, response_code in enumerate(response_code_list):
                     ref = (
@@ -184,27 +190,31 @@ class Api(restful_Api):
 
                         converted_url, parameters = self.__build_parameters(url, params)
 
-                        __method[method]['tags'] = tags
-                        __method[method].update(parameters)
+                        operations_object[method]['tags'] = tags
+                        operations_object[method].update(parameters)
 
-                        if "responses" in __method[method]:
-                            __method[method]["responses"].update(response)
+                        if "responses" in operations_object[method]:
+                            operations_object[method]["responses"].update(response)
                         else:
-                            __method[method]["responses"] = response
+                            operations_object[method]["responses"] = response
 
-                        if "summary" not in __method[method]:
+                        if "summary" not in operations_object[method]:
                             if summary_list[index]:
-                                __method[method]["summary"] = summary_list[index]
+                                operations_object[method]["summary"] = summary_list[index]
 
                             elif len(tags) > 0:
-                                __method[method]["summary"] = f"Operations on {', '.join(tags).lower()}"
+                                operations_object[method]["summary"] = f"Operations on {', '.join(tags).lower()}"
 
-                        validate_path_item_object(__method)
+                        if "securitySchemes" in self.open_api_object["components"]:
+                            components_security_schemes = self.open_api_object["components"]["securitySchemes"]
+                        else:
+                            components_security_schemes = None
+                        validate_path_item_object(operations_object, components_security_schemes)
 
                         if converted_url in urls:
-                            urls[converted_url].update(__method)
+                            urls[converted_url].update(operations_object)
                         else:
-                            urls[converted_url] = __method
+                            urls[converted_url] = operations_object
 
         self.__open_api_object["paths"].update(urls)
 
@@ -774,14 +784,6 @@ def get_swagger_blueprint(
     :param oauth_config
     :return: A Flask blueprint
     """
-
-    authorizations = kwargs.pop("authorizations", None)
-
-    if authorizations:
-        if "securitySchemes" in swagger_object["components"]:
-            swagger_object["components"]["securitySchemes"].update(authorizations)
-        else:
-            swagger_object["components"]["securitySchemes"] = authorizations
 
     add_parameters(swagger_object, kwargs)
     validate_open_api_object(swagger_object)

@@ -89,7 +89,7 @@ List of decorators
 You need to import ``swagger`` from ``flask_restful_swagger_3``
 
 -  ``swagger.tags``: Allow to group operations with a list of tags
-   (argument accepted: a list os strings)
+   (argument accepted: a list of strings)
 -  ``swagger.reorder_with``: Apply a schema and a response to a method,
    default response code is ``200`` (argument accepted: ``schema``: the
    schema to apply, ``as_list``: Apply the schema as list (default is
@@ -114,6 +114,8 @@ You need to import ``swagger`` from ``flask_restful_swagger_3``
 -  ``swagger.reqparser``: Add request body to the method using
    RequestParser (argument accepted: ``name``: Name use to generate the
    model, ``parser``: The RequestParser() object)
+-  ``swagger.security``: Add security to a method or a resource. Each argument MUST correspond to a security scheme
+   which is declared in the ``Security Schemes`` under the Components Object (declared by ``authorizations`` in Api instance)
 
 .. code:: python
 

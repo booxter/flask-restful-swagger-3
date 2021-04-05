@@ -10,8 +10,6 @@ from flask_restful_swagger_3 import constants
 
 REGISTRY_SCHEMA = {}
 
-components_security_schemes = None
-
 
 class ValidationError(ValueError):
     pass
@@ -306,6 +304,10 @@ def get_parser(params):
 
 
 def validate_open_api_object(open_api_object):
+    if "securitySchemes" in open_api_object["components"]:
+        components_security_schemes = open_api_object["components"]["securitySchemes"]
+    else:
+        components_security_schemes = None
     for k, v in open_api_object.items():
         if k not in constants.open_api_object_list:
             raise ValidationError('Invalid open api object. Unknown field "{field}". See {url}'.format(
@@ -325,7 +327,7 @@ def validate_open_api_object(open_api_object):
             continue
 
         if k == 'paths':
-            validate_paths_object(v)
+            validate_paths_object(v, components_security_schemes)
             continue
 
         if k == 'components':
@@ -333,7 +335,7 @@ def validate_open_api_object(open_api_object):
             continue
 
         if k == 'security':
-            validate_security(v)
+            validate_security(v, components_security_schemes)
 
         if k == 'tags':
             validate_tags(v)
@@ -404,12 +406,12 @@ def validate_license_object(license_object):
             raise ValidationError('Invalid license object. Missing field "name"')
 
 
-def validate_callback_object(call_back_object):
+def validate_callback_object(call_back_object, components_security_schemes):
     for k, v in call_back_object.items():
-        validate_path_item_object(v)
+        validate_path_item_object(v, components_security_schemes)
 
 
-def validate_paths_object(paths_object):
+def validate_paths_object(paths_object, components_security_schemes):
     for k, v in paths_object.items():
         if type(k) is not str:
             raise ValidationError(f'Invalid paths object. "{k}" must be a str but was "{type(v)}"')
@@ -417,16 +419,16 @@ def validate_paths_object(paths_object):
             raise ValidationError(f'Invalid paths object. "{k}" must start with a leading slash')
         if k.endswith('/'):
             raise ValidationError(f'Invalid paths object. "{k}" must not have an ending slash')
-        validate_path_item_object(v)
+        validate_path_item_object(v, components_security_schemes)
 
 
-def validate_path_item_object(path_item_object):
+def validate_path_item_object(path_item_object, components_security_schemes):
     """Checks if the passed object is valid according to https://swagger.io/specification/#pathItemObject"""
     for k, v in path_item_object.items():
         if k == '$ref':
             continue
         if k in constants.operation_object_list:
-            validate_operation_object(v)
+            validate_operation_object(v, components_security_schemes)
             continue
         if k == 'servers':
             validate_servers_object(v)
@@ -447,7 +449,7 @@ def validate_path_item_object(path_item_object):
             url='https://swagger.io/specification/#pathItemObject'))
 
 
-def validate_operation_object(operation_object):
+def validate_operation_object(operation_object, components_security_schemes):
     for k, v in operation_object.items():
         if k in ['tags']:
             if isinstance(v, list):
@@ -475,7 +477,10 @@ def validate_operation_object(operation_object):
             validate_responses_object(v)
             continue
         if k in ['security']:
-            validate_security(v)
+            validate_security(v, components_security_schemes)
+            continue
+        if k in ['callbacks']:
+            validate_callback_object(v, components_security_schemes)
             continue
         raise ValidationError('Invalid operation object. Unknown field "{field}". See {url}'.format(
             field=k,
@@ -634,15 +639,14 @@ def validate_media_type_object(media_type_object):
             continue
 
 
-def validate_security(securities):
+def validate_security(securities, components_security_schemes):
     if type(securities) is not list:
         raise ValidationError(f'Invalid operation object. "security" must be a list but was {type(securities)}')
     for security in securities:
-        validate_security_requirement_object(security)
+        validate_security_requirement_object(security, components_security_schemes)
 
 
-def validate_security_requirement_object(security_requirement_object):
-    global components_security_schemes
+def validate_security_requirement_object(security_requirement_object, components_security_schemes):
     if not components_security_schemes:
         raise ValidationError("Each property of security requirement object must correspond "
                               "to a security scheme declared in the Security Schemes under the Components Object, "
@@ -650,21 +654,16 @@ def validate_security_requirement_object(security_requirement_object):
                               "See https://swagger.io/specification/#SecurityRequirementObject")
     for k, v in security_requirement_object.items():
         if type(v) is not list:
-            components_security_schemes = None
             raise ValidationError(f'Invalid security requirement object. '
                                   f'"{k}" must be a list, but was {type(v)}')
         if k not in components_security_schemes:
-            components_security_schemes = None
             raise ValidationError("Each property of security requirement object must correspond "
                                   "to a security scheme declared in the Security Schemes under the Components Object, "
                                   "See https://swagger.io/specification/#SecurityRequirementObject")
         _type = components_security_schemes[k].get('type', None)
         if _type not in ['oauth2', 'openIdConnect'] and len(v) > 0:
-            components_security_schemes = None
             raise ValidationError(f'Invalid security requirement object. '
                                   f'"{k}" must be empty except for "oauth2", "openIdConnect"')
-
-    components_security_schemes = None
 
 
 def validate_map_security_scheme_object(map_security_scheme_object):
@@ -673,9 +672,6 @@ def validate_map_security_scheme_object(map_security_scheme_object):
             validate_security_scheme_object(v)
         except ValidationError:
             validate_reference_object(v)
-
-    global components_security_schemes
-    components_security_schemes = map_security_scheme_object
 
 
 def validate_security_scheme_object(security_scheme_object):
@@ -818,7 +814,10 @@ def validate_components_object(components_object):
             continue
 
         if k == 'callbacks':
-            validate_callback_object(v)
+            if "securitySchemes" in components_object:
+                validate_callback_object(v, components_object["securitySchemes"])
+            else:
+                validate_callback_object(v, None)
 
 
 def validate_map_schema_object(map_schema_object):
@@ -1337,6 +1336,89 @@ def reqparser(name, parser):
             return func(self, *args, **kwargs)
 
         return wrapper
+
+    return decorated
+
+
+def __security_method(func, **security_requirement):
+    """
+    Decorate method
+    :param func:
+    :param security_requirement:
+    :return:
+    """
+    func.__security = dict(security_requirement)
+
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        return func(self, *args, **kwargs)
+
+    return wrapper
+
+
+def __security_decorated_class(cls, **security_requirement):
+    """
+    Decorate each method of Resource class
+    :param cls:
+    :param security_requirement:
+    :return:
+    """
+    for name, m in inspect.getmembers(cls, lambda x: inspect.isfunction(x) or inspect.ismethod(x)):
+        if name in constants.operation_object_list:
+            setattr(cls, name, __security_method(m, **security_requirement))
+    return cls
+
+
+def security(**security_requirement):
+    """
+    Decorator to add a security to the operation object,
+    To use, you must set the authorizations property of Api or get_swagger_blueprint
+    Example usage:
+        authorizations = {
+            "apikey": {
+                "type": "apiKey",
+                "in": "header",
+                "name": "Authorization",
+                "scheme": "bearer",
+                "bearerFormat": "JWT"
+            }
+        }
+
+        ## with Api
+        api = Api(app, version='5', servers=servers, title="APP",  authorizations=authorizations)
+
+        ## With get_swagger_blueprint
+        api = Api(app, version='5', servers=servers, title="APP")
+
+        swagger_blueprint = get_swagger_blueprint(
+            api.open_api_object,
+            swagger_prefix_url=SWAGGER_URL,
+            swagger_url=API_URL,
+            authorizations=authorizations)
+
+        @security([{"api_key": []}])
+        def get():
+            ...
+
+    :param security_requirement:
+    :return:
+    """
+
+    def decorated(func_or_class):
+        klass = None
+        function = None
+
+        if inspect.isclass(func_or_class):
+            klass = func_or_class
+
+        if inspect.ismethod(func_or_class) or inspect.isfunction(func_or_class):
+            function = func_or_class
+
+        if klass:
+            return __security_decorated_class(klass, **security_requirement)
+
+        if function:
+            return __security_method(function, **security_requirement)
 
     return decorated
 

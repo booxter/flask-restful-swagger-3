@@ -208,6 +208,32 @@ def open_api_object():
                 'ref_auth': {
                     '$ref': "#/components/securitySchemes/auth"
                 }
+            },
+            'callbacks': {
+                "https://callback": {
+                    'post': {
+                        'description': 'Returns a user',
+                        'deprecated': True,
+                        'responses': {
+                            '200': {
+                                'description': 'Get users',
+                                'content': {
+                                    'application/json': {
+                                        'schema': {
+                                            "$ref": "#/components/schemas/UserModel"
+                                        },
+                                        'example': {
+                                            'application/json': {
+                                                'id': 1,
+                                                'name': 'somebody'
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         'security': [
@@ -485,7 +511,33 @@ def operation_object():
             {
                 "api-key": []
             }
-        ]
+        ],
+        'callbacks': {
+            "https://callback": {
+                'post': {
+                    'description': 'Returns a user',
+                    'deprecated': True,
+                    'responses': {
+                        '200': {
+                            'description': 'Get users',
+                            'content': {
+                                'application/json': {
+                                    'schema': {
+                                        "$ref": "#/components/schemas/UserModel"
+                                    },
+                                    'example': {
+                                        'application/json': {
+                                            'id': 1,
+                                            'name': 'somebody'
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
 
@@ -1073,6 +1125,30 @@ def security():
     return [
         {
             "api-key": []
+        },
+        {
+            "auth-password": []
+        },
+        {
+            "auth": []
+        },
+        {
+            "auth-clientCredentials": []
+        },
+        {
+            "auth-authorizationCode": []
+        },
+        {
+            "http": []
+        },
+        {
+            "http-bearer": []
+        },
+        {
+            "openId": []
+        },
+        {
+            "ref_auth": []
         }
     ]
 
