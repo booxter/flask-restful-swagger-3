@@ -314,7 +314,7 @@ class Api(restful_Api):
                 "description": variable_name,
                 "in": "path",
                 "name": variable_name,
-                "required": "true",
+                "required": True,
             }
 
             _type = TypeSwagger.get_type(converter)
