@@ -32,7 +32,7 @@ swagger_blueprint_url_prefix = app.config.get('SWAGGER_BLUEPRINT_URL_PREFIX', ''
 
 with app.app_context():
     swagger_blueprint = get_swagger_blueprint(
-        api.open_api_json,
+        api.open_api_object,
         swagger_prefix_url=SWAGGER_URL,
         swagger_url=API_URL,
         title='Example', version='1', servers=servers)
