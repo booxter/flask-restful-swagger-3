@@ -1,3 +1,12 @@
+Version 0.4.7
+---------------
+
+Released 2022-12-01
+
+-  Allow usage of unassigned HTTPStatus code
+- Allow usage of unassigned HTTPStatus code
+
+
 Version 0.4.6
 ---------------
 
