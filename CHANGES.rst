@@ -1,3 +1,11 @@
+Version 0.4.9
+---------------
+
+Released 2022-12-02
+
+-  Fix limit of unassigned http request
+
+
 Version 0.4.8
 ---------------
 
