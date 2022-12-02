@@ -11,9 +11,9 @@ parameter_object_list = ['name', 'in', 'description', 'required', 'deprecated', 
                          'style', 'explode', 'allowReserved', 'schema', 'example', 'examples', 'content', 'matrix',
                          'label', 'form', 'simple', 'spaceDelimited', 'pipeDelimited', 'deepObject']
 
-unassigned_code = list(range(104, 200)) + list(range(209, 225)) + list(range(227, 299)) + \
-                  list(range(309, 399)) + list(range(419, 420)) + list(range(432, 450)) + \
-                  list(range(452, 499)) + list(range(512, 599))
+unassigned_code = list(range(104, 200)) + list(range(209, 226)) + list(range(227, 300)) + \
+                  list(range(309, 400)) + list(range(419, 421)) + list(range(432, 451)) + \
+                  list(range(452, 500)) + list(range(512, 600))
 http_status_enum = [status for status in HTTPStatus]
 http_status_value = [status.value for status in HTTPStatus]
 responses_object_list = list(set(http_status_enum + http_status_value + unassigned_code))
