@@ -1,3 +1,11 @@
+Version 0.4.8
+---------------
+
+Released 2022-12-02
+
+-  Fix typo in constants
+
+
 Version 0.4.7
 ---------------
 
