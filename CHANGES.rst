@@ -1,3 +1,11 @@
+Version 0.5.0
+---------------
+
+Released 2023-03-02
+
+-  Fix summary parameter in decorators: reponse and reorder_with
+
+
 Version 0.4.9
 ---------------
 
