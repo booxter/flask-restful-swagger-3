@@ -1,18 +1,14 @@
 import os
 from setuptools import setup
 
-branch = os.getenv("CI_COMMIT_REF_NAME", None)
-
 
 def read(file_to_read):
     with open(file_to_read, 'r') as f:
         return f.read()
 
 
-version = '0.5.0'
+version = '0.5.1'
 
-if branch == "develop":
-    version += f".dev{os.getenv('CI_BUILD_ID', None)}"
 
 setup(
     name='flask-restful-swagger-3',

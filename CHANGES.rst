@@ -1,3 +1,12 @@
+Version 0.5.1
+---------------
+
+Released 2023-03-02
+
+-  Remove develop version from setup
+-  Fix doc
+
+
 Version 0.5.0
 ---------------
 

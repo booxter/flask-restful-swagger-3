@@ -126,8 +126,7 @@ You need to import ``swagger`` from ``flask_restful_swagger_3``
 
     class UserItemResource(Resource):
         @swagger.tags(['user'])
-        @swagger.reorder_with(UserModel, description="Returns a user")
-        @swagger.summary("Return user")
+        @swagger.reorder_with(UserModel, description="Returns a user", summary="Get User")
         def get(self, user_id):
             # Do some processing
             return UserModel(**{'id': 1, 'name': 'somebody'}), 200  # generates json response {"id": 1, "name": "somebody"}
