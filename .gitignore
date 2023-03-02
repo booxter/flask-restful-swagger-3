@@ -42,6 +42,8 @@ htmlcov
 
 # venv
 env
+env_*
+*_env
 
 # hidden files
 .DS_Store

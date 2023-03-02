@@ -11,7 +11,7 @@ known_users = []
 
 class UserResource(Resource):
     @swagger.tags('users')
-    @swagger.reorder_with(UserModel, response_code=200)
+    @swagger.reorder_with(UserModel, response_code=200, summary="Add User")
     @swagger.parameter(_in='query', name='query', schema=UserModel, required=True, description='query')
     def post(self, _parser):
         """

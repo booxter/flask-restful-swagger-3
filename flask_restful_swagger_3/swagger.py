@@ -1165,10 +1165,11 @@ def response(response_code, description=None, summary=None, schema=None, no_cont
         else:
             func.__description = [sanitize_doc(_description)]
 
-        if "__summary" in func.__dict__:
-            func.__summary.append(summary)
-        else:
-            func.__summary = [summary]
+        if summary is not None:
+            if "__summary" in func.__dict__:
+                func.__summary.append(summary)
+            else:
+                func.__summary = [summary]
 
         if "__schema" in func.__dict__:
             func.__schema.append(schema)
@@ -1226,10 +1227,11 @@ def reorder_with(schema, as_list: bool = False, response_code=200, description=N
         else:
             func.__description = [_description]
 
-        if "__summary" in func.__dict__:
-            func.__summary.append(summary)
-        else:
-            func.__summary = [summary]
+        if summary is not None:
+            if "__summary" in func.__dict__:
+                func.__summary.append(summary)
+            else:
+                func.__summary = [summary]
 
         if "__no_content" in func.__dict__:
             func.__no_content.append(False)

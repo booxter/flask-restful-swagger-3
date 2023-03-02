@@ -53,7 +53,7 @@ The Api class supports the following parameters:
 | `terms` | The terms of service for the API. Maps to the `termsOfService` field of the [info object](https://swagger.io/specification/#infoObject). |
 | `title` | The title of the application (defaults to the flask app module name). Maps to the `title` field of the [info object](https://swagger.io/specification/#infoObject). |
 
-To see 
+To see
 
 ## Documenting API endpoints
 
@@ -65,9 +65,9 @@ _You need to import `swagger` from `flask_restful_swagger_3`_
 
 
 * `swagger.tags`: Allow to group operations with a list of tags (argument accepted: a list of strings)
-* `swagger.reorder_with`: Apply a schema and a response to a method, default response code is `200` (argument accepted: `schema`: the schema to apply, `as_list`: Apply the schema as list (default is `False`), `response_code`: The response code to apply the example schema (default is `200`), `description`: Description of the method (default is the function doc))
+* `swagger.reorder_with`: Apply a schema and a response to a method, default response code is `200` (argument accepted: `schema`: the schema to apply, `as_list`: Apply the schema as list (default is `False`), `response_code`: The response code to apply the example schema (default is `200`), `description`: Description of the response code (default is the function doc), `summary`: Summary of the method (if setted in `response`, you don't need it here))
 * `swagger.reorder_list_with`: Same as `swagger.reorder_with` with `as_list` at `True`
-* `swagger.response`: Add a response to the method (argument accepted: `response_code`:  The response to add to the method, `description`: The description of the response, `schema`: The schema to apply to the method, `no_content`: if `True`: `content` is not added to response, default: `False`, `example`: example of response)
+* `swagger.response`: Add a response to the method (argument accepted: `response_code`:  The response to add to the method, `description`: The description of the response, `schema`: The schema to apply to the method, `no_content`: if `True`: `content` is not added to response, default: `False`, `example`: example of response, `summary`: Summary of the method (if setted in `reorder_with` or `reorder_list_with`, you don't need it here))
 * `swagger.parameter`: Add a parameter to the method (Don't use the `path`parameter, it will be added automatically with a url with variable: `/users:<int:user_id>`) (argument accepted: _in, name, schema, description or a `dictionnary)
 * `swagger.parameters`: Add several parameters to the method, it can add the args to the `_parser` of the method if exist  (argument accepted: a list of parameter)
 * `swagger.expected`: Add a request body to the method (argument accepted: `schema`: The schema expected, `required`)
@@ -80,7 +80,7 @@ from flask_restful_swagger_3 import swagger, Resource
 
 class UserItemResource(Resource):
     @swagger.tags(['user'])
-    @swagger.reorder_with(UserModel, description="Returns a user")
+    @swagger.reorder_with(UserModel, description="Returns a user", summary="Get User")
     def get(self, user_id):
         # Do some processing
         return UserModel(**{'id': 1, 'name': 'somebody'}), 200  # generates json response {"id": 1, "name": "somebody"}
@@ -154,7 +154,7 @@ For each ``properties``, you can add ``nullable``, ``dump_only`` and ``load_only
 
 You can create super model:
 
-__WARNING__ : 
+__WARNING__ :
 * You can create only super model with type ``object``
 * The inherited model must same type of super model (The best use is to not add type to inherited Schema)
 

@@ -110,7 +110,7 @@ class Api(restful_Api):
 
                 assert (
                     len(response_code_list) == len(description_list) == len(model_list) ==
-                    len(no_content_list) == len(custom_example_list) == len(summary_list)
+                    len(no_content_list) == len(custom_example_list)
                 )
 
                 if reqparser:
@@ -199,7 +199,7 @@ class Api(restful_Api):
                             operations_object[method]["responses"] = response
 
                         if "summary" not in operations_object[method]:
-                            if summary_list[index]:
+                            if index < len(summary_list) and summary_list[index]:
                                 operations_object[method]["summary"] = summary_list[index]
 
                             elif len(tags) > 0:

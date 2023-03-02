@@ -95,13 +95,15 @@ You need to import ``swagger`` from ``flask_restful_swagger_3``
    schema to apply, ``as_list``: Apply the schema as list (default is
    ``False``), ``response_code``: The response code to apply the example
    schema (default is ``200``), ``description``: Description of the
-   method (default is the function doc))
+   method (default is the function doc),
+   ``summary``: Summary of the method (if setted in ``response``, you don't need it here))
 -  ``swagger.reorder_list_with``: Same as ``swagger.reorder_with`` with
    ``as_list`` at ``True``
 -  ``swagger.response``: Add a response to the method (argument
    accepted: ``response_code``: The response to add to the method,
    ``description``: The description of the response, ``schema``: The
-   schema to apply to the method,  ``no_content``: if ``True``: ``content`` is not added to response, default: ``False``)
+   schema to apply to the method,  ``no_content``: if ``True``: ``content`` is not added to response, default: ``False``,
+   ``summary``: Summary of the method (if setted in ``reorder_with`` or ``reorder_list_with``, you don't need it here))
 -  ``swagger.parameter``: Add a parameter to the method (Don't use the
    ``path``\ parameter, it will be added automatically with a url with
    variable: ``/users:<int:user_id>``) (argument accepted: \_in, name,
@@ -125,6 +127,7 @@ You need to import ``swagger`` from ``flask_restful_swagger_3``
     class UserItemResource(Resource):
         @swagger.tags(['user'])
         @swagger.reorder_with(UserModel, description="Returns a user")
+        @swagger.summary("Return user")
         def get(self, user_id):
             # Do some processing
             return UserModel(**{'id': 1, 'name': 'somebody'}), 200  # generates json response {"id": 1, "name": "somebody"}
