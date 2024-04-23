@@ -610,7 +610,7 @@ class Schema(dict):
             if cls.type == 'object' and not cls.properties:
                 raise TypeError("Attribute properties cannot be None when schema type is object")
             if cls.type == 'array':
-                if (not type(cls.items) is dict) or (inspect.isclass(cls.items) and not issubclass(cls.items, Schema)):
+                if not (type(cls.items) is dict or (inspect.isclass(cls.items) and issubclass(cls.items, Schema))):
                     raise TypeError(f"Attribute items must be of type dict or a subclass of Schema,"
                                     f" but was {type(cls.items)}")
 
